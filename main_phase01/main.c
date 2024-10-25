@@ -36,8 +36,29 @@
 
 void announce_elections(void)
 {
-
+	int i;
+	/*initialize Districts*/
+	for(i = 0; i < 56; i++)
+	{
+		Districts[i].did = i;
+		Districts[i].seats = 0;
+		Districts[i].allotted = 0;
+		Districts[i].blanks = 0;
+		Districts[i].voids = 0;
+		Districts[i].stations = NULL;
+		Districts[i].candidates = NULL;
+	}
+	/*initialize parties*/
+	for(i = 0; i < 5; i++)
+	{
+		Parties[i].pid = i;
+		Parties[i].nelected = 0;
+		Parties[i].elected = NULL;
+	}
+	/*initialize parliament*/
+	Parliament.members = NULL;
 }
+
 
 
 
