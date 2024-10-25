@@ -33,6 +33,16 @@
 #define DPRINT(...)
 #endif /* DEBUG */
 
+
+void announce_elections(void)
+{
+
+}
+
+
+
+
+
 /*
  * Globals:
  * you may add some here for certain events
@@ -99,6 +109,7 @@ int main(int argc, char *argv[])
 			case '#':
 				break;
 			case 'A':
+				printf("A\n");
 				announce_elections();
 				break;
 			case 'D':
@@ -107,6 +118,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("D %d %d\n", did, seats);
 				ret = create_district(did, seats);
 				break;
 			case 'S':
@@ -115,6 +127,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("S %d %d\n", sid, did);
 				ret = create_station(sid, did);
 				break;
 			case 'P':
@@ -123,6 +136,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("P %d\n", pid);
 				create_party(pid);
 				break;
 			case 'C':
@@ -131,6 +145,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("C %d %d %d\n", cid, did, pid);
 				ret = register_candidate(cid, did, pid);
 				break;
 			case 'R':
@@ -139,6 +154,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("R %d %d %d\n", vid, did, sid);
 				ret = register_voter(vid, did, sid);
 				break;
 			case 'U':
@@ -147,9 +163,11 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("U %d\n", vid);
 				ret = unregister_voter(vid);
 				break;
 			case 'E':
+				printf("E\n");
 				delete_empty_stations();
 				break;
 			case 'V':
@@ -158,6 +176,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("V %d %d %d\n", vid, sid, cid);
 				ret = vote(vid, sid, cid);
 				break;
 			case 'M':
@@ -166,11 +185,14 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("M %d\n", did);
 				count_votes(did);
 			case 'G':
+				printf("G\n");
 				form_government();
 				break;
 			case 'N':
+			printf("N\n");
 				form_parliament();
 				break;
 			case 'I':
@@ -179,6 +201,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("I %d\n", did);
 				print_district(did);
 			case 'J':
 				if (sscanf(trimmed_line, "J %d %d", &sid, &did) != 2) {
@@ -186,6 +209,7 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("J %d %d\n", sid, did);
 				print_station(sid, did);
 				break;
 			case 'K':
@@ -194,9 +218,11 @@ int main(int argc, char *argv[])
 					ret = 1;
 					break;
 				}
+				printf("K %d\n", pid);
 				print_party(pid);
 				break;
 			case 'L':
+				printf("L\n");
 				print_parliament();
 				break;
 			default:
