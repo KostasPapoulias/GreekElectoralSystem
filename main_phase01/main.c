@@ -195,9 +195,69 @@ int register_candidate(int cid, int did, int pid){
 		current = current->next;
 	}
 	printf("\nDONE\n");
+	return 0;
 }
 
-
+int register_voter(int vid, int did, int sid)
+{
+	/*inserts new voter*/
+	if(did < 1 || did > 56)
+	{
+		printf("\nFAILED\n");
+		return 1;
+	}
+	struct voter *new_voter = (struct voter *)malloc(sizeof(struct voter));
+	if(new_voter == NULL)
+	{
+		printf("FAILED\n");
+		return 1;
+	}
+	new_voter->vid = vid;
+	new_voter->voted = 0;
+	new_voter->next = NULL;
+	if(Districts[did].stations == NULL)
+	{
+		printf("FAILED\n");
+		return 1;
+	}
+	struct station *current = Districts[did].stations;
+	while(current != NULL)
+	{
+		if(current->sid == sid)
+		{
+			if(current->voters == NULL)
+			{
+				current->voters = new_voter;
+			}
+			else
+			{
+				struct voter *voter_current = current->voters;
+				while(voter_current != NULL)
+				{
+					if(voter_current->next == NULL)
+					{
+						voter_current->next = new_voter;
+						break;
+					}
+					voter_current = voter_current->next;
+				}
+			}
+			break;
+		}
+		current = current->next;
+	}
+	
+	/*prints voters*/
+	printf("\n\tVoters = ");
+	struct voter *voter_current = current->voters;
+	while(voter_current != NULL)
+	{
+		printf("<%d>, ", voter_current->vid);
+		voter_current = voter_current->next;
+	}
+	printf("\nDONE\n");
+	return 0;
+}
 /*
  * Globals:
  * you may add some here for certain events
