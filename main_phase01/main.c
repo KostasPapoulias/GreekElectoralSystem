@@ -64,12 +64,13 @@ int create_disticts(int did, int seats)
 	/*inserts new district*/
 	if(did < 1 || did > 56)
 	{
-		printf("FAILED\n");
+		printf("\nFAILED\n");
 		return 1;
 	}
 	Districts[did].seats = seats;
 
 	/*prints the array*/
+	printf("\n\tDistricts = ");
 	int i;
 	for(i = 0; i < did; i++)
 	{
@@ -79,6 +80,52 @@ int create_disticts(int did, int seats)
 	return 0;
 }
 
+int create_station(int sid, int did)
+{
+	/*inserts new station*/
+	if (did < 1 || did > 56) {
+        printf("\nFAILED\n");
+        return 1;
+    }
+	struct station *new_station = (struct station *)malloc(sizeof(struct station));
+	if(new_station == NULL)
+	{
+		printf("FAILED\n");
+		return 1;
+	}
+	new_station->sid = sid;
+	new_station->registered = 0;
+	new_station->voters = NULL;
+	new_station->vsentinel = NULL;
+	new_station->next = NULL;
+	if(Districts[did].stations == NULL)
+	{
+		Districts[did].stations = new_station;
+	}
+	else
+	{
+		struct station *current = Districts[did].stations;
+		while(current != NULL)
+		{
+			if(current->next == NULL)
+			{
+				current->next = new_station;
+				break;
+			}
+			current = current->next;
+		}
+	}
+	/*prints stations*/
+	printf("\n\tStations = ");
+	struct station *current = Districts[did].stations;
+	while(current != NULL)
+	{
+		printf("<%d>, ", current->sid);
+		current = current->next;
+	}
+	printf("\nDONE\n");
+
+}
 
 
 
