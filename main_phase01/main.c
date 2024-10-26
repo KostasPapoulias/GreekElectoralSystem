@@ -38,7 +38,7 @@ void announce_elections(void)
 {
 	int i;
 	/*initialize Districts*/
-	for(i = 0; i < 56; i++)
+	for(i = 1; i <= 56; i++)
 	{
 		Districts[i].did = i;
 		Districts[i].seats = 0;
@@ -59,6 +59,25 @@ void announce_elections(void)
 	Parliament.members = NULL;
 }
 
+int create_disticts(int did, int seats)
+{
+	/*inserts new district*/
+	if(did < 1 || did > 56)
+	{
+		printf("FAILED\n");
+		return 1;
+	}
+	Districts[did].seats = seats;
+
+	/*prints the array*/
+	int i;
+	for(i = 0; i < did; i++)
+	{
+		printf("<%d>, ", did);
+	}
+	printf("\nDONE\n");
+	return 0;
+}
 
 
 
