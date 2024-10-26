@@ -137,12 +137,62 @@ void create_party(int pid){
 	Parties[pid].pid = pid;
 	Parties[pid].nelected = 0;
 	Parties[pid].elected = NULL;
+
 	/*prints parties*/
 	printf("\n\tParties = ");
 	int i;
 	for(i = 0; i < pid; i++)
 	{
 		printf("<%d>, ", pid);
+	}
+	printf("\nDONE\n");
+}
+
+int register_candidate(int cid, int did, int pid){
+	/*inserts new candidate*/
+	if(did < 1 || did > 56 || pid < 1 || pid > 5 || cid < 2)
+	{
+		printf("\nFAILED\n");
+		return 1;
+	}
+	
+	struct candidate *new_candidate = (struct candidate *)malloc(sizeof(struct candidate));
+	if(new_candidate == NULL)
+	{
+		printf("FAILED\n");
+		return 1;
+	}
+	new_candidate->cid = cid;
+	/*new_candidate->pid = pid;*/
+	new_candidate->votes = 0;
+	new_candidate->elected = 0;
+	new_candidate->next = NULL;
+	new_candidate->prev = NULL;
+	if(Districts[did].candidates == NULL)
+	{
+		Districts[did].candidates = new_candidate;
+	}
+	else
+	{
+		struct candidate *current = Districts[did].candidates;
+		while(current != NULL)
+		{
+			if(current->next == NULL)
+			{
+				current->next = new_candidate;
+				new_candidate->prev = current;
+				break;
+			}
+			current = current->next;
+		}
+	}
+	/*prints candidates*/
+	printf("\n\tCandidates = ");
+	struct candidate *current = Districts[did].candidates;
+	while(current != NULL)
+	{
+		printf("<%d>, ", current->cid);
+		current = current->next;
 	}
 	printf("\nDONE\n");
 }
