@@ -304,6 +304,13 @@ int unregister_voter(int vid)
 			current_station = current_station->next;
 		}
 	}
+	if(esc == 0)
+	{
+		printf("\nFAILED\n");
+		return 1;
+	}
+	current_station->registered--;
+	
 	/*prints voters*/
 	printf("\n\t<%d> <%d>", i, current_station->sid);
 	printf("\n\tVoters = ");
