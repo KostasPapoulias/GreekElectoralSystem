@@ -246,7 +246,7 @@ int register_voter(int vid, int did, int sid)
 		}
 		current = current->next;
 	}
-	
+
 	/*prints voters*/
 	printf("\n\tVoters = ");
 	struct voter *voter_current = current->voters;
@@ -258,6 +258,64 @@ int register_voter(int vid, int did, int sid)
 	printf("\nDONE\n");
 	return 0;
 }
+
+int unregister_voter(int vid)
+{
+	/*removes voter*/
+	if(vid < 1)
+	{
+		printf("\nFAILED\n");
+		return 1;
+	}
+	int i, esc = 0;
+	struct station *current_station;
+	for(i = 1; i <= 56; i++)
+	{
+		current_station = Districts[i].stations;
+		while(current_station != NULL)
+		{
+			struct voter *current_voter = current_station->voters;
+			struct voter *prev_voter = current_voter;
+			while(current_voter != NULL)
+			{
+				if(current_voter->vid == vid)
+				{
+					if(current_voter->next == NULL)
+					{
+						prev_voter->next = NULL;
+						free(current_voter);
+						esc = 1;
+						break;
+					}
+					else
+					{
+						prev_voter->next = current_voter->next;
+						free(current_voter);	
+						esc = 1;					
+						break;
+					}
+				}
+			}
+			if(esc == 1)
+			{
+				break;
+			}
+			current_voter = current_voter;
+			current_station = current_station->next;
+		}
+	}
+	/*prints voters*/
+	printf("\n\t<%d> <%d>", i, current_station->sid);
+	printf("\n\tVoters = ");
+	struct voter *voter_current = current_station->voters;
+	while(voter_current != NULL)
+	{
+		printf("<%d>, ", voter_current->vid);
+		voter_current = voter_current->next;
+	}
+	return 0;
+}
+
 /*
  * Globals:
  * you may add some here for certain events
