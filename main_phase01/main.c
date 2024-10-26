@@ -310,7 +310,7 @@ int unregister_voter(int vid)
 		return 1;
 	}
 	current_station->registered--;
-	
+
 	/*prints voters*/
 	printf("\n\t<%d> <%d>", i, current_station->sid);
 	printf("\n\tVoters = ");
@@ -321,6 +321,57 @@ int unregister_voter(int vid)
 		voter_current = voter_current->next;
 	}
 	return 0;
+}
+
+void delete_empty_stations()
+{
+	/*removes empty stations*/
+	int i, esc = 0;
+	for(i = 1; i <= 56; i++)
+	{
+		struct station *current = Districts[i].stations;
+		struct station *prev = current;
+		while(current != NULL)
+		{
+			if(current->registered == 0)
+			{
+				if(current->next == NULL)
+				{
+					prev->next = NULL;
+					free(current);
+					esc = 1;
+					break;
+				}
+				else
+				{
+					prev->next = current->next;
+					free(current);
+					esc = 1;
+					break;
+				}
+			}
+			
+			prev = current;
+			current = current->next;
+		
+		}
+		if(esc == 1)
+		{
+			break;
+		}
+	}
+
+	/*prints stations*/
+	for(i = 1; i <= 56; i++)
+	{
+		struct station *current = Districts[i].stations;
+		while(current != NULL)
+		{
+			printf("\n\t<%d> <%d>, ", current->sid, i);
+			current = current->next;
+		}
+	}
+	printf("\nDONE\n");
 }
 
 /*
