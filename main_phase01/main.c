@@ -374,6 +374,126 @@ void delete_empty_stations()
 	printf("\nDONE\n");
 }
 
+int vote(int vid, int sid, int cid)
+{
+	/*adds vote to voter*/
+	if(vid < 0 || sid < 0 || cid < 0 )
+	{
+		printf("\nFAILED\n");
+		return 1;
+	}
+	int i, esc = 0;
+	struct station *current_station;
+	for(i = 1; i <= 56; i++)
+	{
+		current_station = Districts[i].stations;
+		while(current_station != NULL)
+		{
+			if(current_station->sid == sid)
+			{
+				struct voter *current_voter = current_station->voters;
+				while(current_voter != NULL)
+				{
+					if(current_voter->vid == vid)
+					{
+						if(cid == 0 || cid == 1)
+						{
+							if(cid == 0)
+							{
+								Districts[i].blanks++;
+							}
+							else
+							{
+								Districts[i].voids++;
+							}
+							esc = 1;
+							break;
+						}
+						else
+						{
+							vote_candidate(cid, i);
+						}
+						current_voter->voted = 1;
+						esc = 1;
+						break;
+					}
+					current_voter = current_voter->next;
+				}
+				break;
+			}
+			current_station = current_station->next;
+		}
+		if(esc == 1)
+		{
+			break;
+		}
+	}
+	if(esc == 0)
+	{
+		printf("\nFAILED\n");
+		return 1;
+	}
+	/*adds vote to candidate*/
+	struct candidate *current_candidate = Districts[i].candidates;
+	while(current_candidate != NULL)
+	{
+		if(current_candidate->cid == cid)
+		{
+			current_candidate->votes++;
+			break;
+		}
+		current_candidate = current_candidate->next;
+	}
+
+	/*prints candidates*/
+	printf("\n\tDistrict = <%d>", i);
+	printf("\n\tCandidates = ");
+	struct candidate *candidate_current = Districts[i].candidates;
+	while(candidate_current != NULL)
+	{
+		printf("(<%d> <%d>), ", candidate_current->cid, candidate_current->votes);
+		candidate_current = candidate_current->next;
+	}
+	printf("\n\tBlanks = <%d>", Districts[i].blanks);
+	printf("\n\tVoids = <%d>", Districts[i].voids);
+	printf("\nDONE\n");
+	return 0;
+}
+
+void vote_candidate(int cid, int i)
+{
+	/*adds vote to candidate*/
+	struct candidate *current_candidate = Districts[i].candidates;
+	while(current_candidate != NULL)
+	{
+		if(current_candidate->cid == cid)
+		{
+			current_candidate->votes++;
+			/*swaps candidates*/
+			if(current_candidate->prev != NULL)
+			{
+				while (current_candidate->prev != NULL && current_candidate->votes > current_candidate->prev->votes) {
+					struct candidate *temp = current_candidate->prev;
+					current_candidate->prev = temp->prev;
+					temp->next = current_candidate->next;
+					if (temp->next != NULL) {
+						temp->next->prev = temp;
+					}
+					current_candidate->next = temp;
+					temp->prev = current_candidate;
+					if (current_candidate->prev != NULL) {
+						current_candidate->prev->next = current_candidate;
+					} else {
+						Districts[i].candidates = current_candidate;
+					}
+				}
+			}
+			break;
+		}
+		current_candidate = current_candidate->next;
+	}
+}
+
 /*
  * Globals:
  * you may add some here for certain events
