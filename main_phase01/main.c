@@ -59,7 +59,7 @@ void announce_elections(void)
 	Parliament.members = NULL;
 }
 
-int create_distict(int did, int seats)
+int create_district(int did, int seats)
 {
 	/*inserts new district*/
 	if(did < 1 || did > 56)
@@ -80,7 +80,7 @@ int create_distict(int did, int seats)
 	return 0;
 }
 
-int create_district(int sid, int did)
+int create_station(int sid, int did)
 {
 	/*inserts new station*/
 	if (did < 1 || did > 56) {
