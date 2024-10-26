@@ -49,7 +49,7 @@ void announce_elections(void)
 		Districts[i].candidates = NULL;
 	}
 	/*initialize parties*/
-	for(i = 0; i < 5; i++)
+	for(i = 1; i <= 5; i++)
 	{
 		Parties[i].pid = i;
 		Parties[i].nelected = 0;
@@ -127,7 +127,25 @@ int create_station(int sid, int did)
 
 }
 
-
+void create_party(int pid){
+	/*inserts new party*/
+	if(pid < 1 || pid > 5)
+	{
+		printf("\nFAILED\n");
+		return;
+	}
+	Parties[pid].pid = pid;
+	Parties[pid].nelected = 0;
+	Parties[pid].elected = NULL;
+	/*prints parties*/
+	printf("\n\tParties = ");
+	int i;
+	for(i = 0; i < pid; i++)
+	{
+		printf("<%d>, ", pid);
+	}
+	printf("\nDONE\n");
+}
 
 
 /*
