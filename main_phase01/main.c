@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "elections.h"
 
@@ -163,7 +164,7 @@ int register_candidate(int cid, int did, int pid){
 		return 1;
 	}
 	new_candidate->cid = cid;
-	/*new_candidate->pid = pid;*/
+	new_candidate->pid = pid;
 	new_candidate->votes = 0;
 	new_candidate->elected = 0;
 	new_candidate->next = NULL;
@@ -492,6 +493,77 @@ void vote_candidate(int cid, int i)
 		}
 		current_candidate = current_candidate->next;
 	}
+}
+
+void count_votes(int did)
+{
+	/*counts votes*/
+	if(did < 1 || did > 56)
+	{
+		printf("\nFAILED\n");
+		return;
+	}
+
+	int votes_party[5] = {0};
+	int seats_per_party[5] = {0};
+	int magnitude[56] = {0};
+	int total_votes = 0;
+
+	struct candidate *current_candidate = Districts[did].candidates;
+	/*counts total votes and votes per party*/
+	while(current_candidate != NULL)
+	{
+		total_votes += current_candidate->votes;
+		votes_party[current_candidate->pid] += current_candidate->votes;
+		current_candidate = current_candidate->next;
+	}
+
+	int valid_votes = total_votes - (Districts[did].voids + Districts[did].blanks);
+	int i;
+	/*counts the seats per party*/
+	for(i = 1; i <= 5; i++)
+	{
+		seats_per_party[i] = (int)floor((double)votes_party[i] / magnitude[did]);
+	}
+	
+	current_candidate = Districts[did].candidates;
+	/*distributes seats to candidates*/
+	for(i = 1; i <= 5; i++)
+	{
+		int j;
+		for(j = 0; j < seats_per_party[i]; j++)
+		{
+			if(current_candidate == NULL)
+			{
+				break;
+			}
+			current_candidate->elected = 1;
+			Parties[i].nelected++;
+			current_candidate = current_candidate->next;
+			/* Add the elected candidate to the party*/
+			struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
+			if (elected_candidate == NULL) {
+				printf("FAILED\n");
+				return;
+			}
+			*elected_candidate = *current_candidate;
+			elected_candidate->next = Parties[i].elected;
+			Parties[i].elected = elected_candidate;
+		}
+	}
+	/*prints candidates*/
+	printf("/n/tSeats = ");
+	for(i = 1; i <= 5; i++)
+	{
+		struct candidate *current_candidate = Parties[i].elected;
+		while(current_candidate != NULL)
+		{
+			printf("(<%d> <%d> <%d>), ", current_candidate->cid, i, current_candidate->votes);
+			current_candidate = current_candidate->next;
+		}
+	}
+	
+	printf("\nDONE\n");
 }
 
 /*
