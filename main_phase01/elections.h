@@ -16,6 +16,7 @@
 #define __CS240_ELECTIONS_H__
 struct candidate {
 	int cid; /* 0 reserved for blanks, 1 for voids */
+	int pid; /* party which cardidate belongs */
 	int votes;
 	int elected;
 	struct candidate *next;
