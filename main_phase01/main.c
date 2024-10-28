@@ -817,6 +817,19 @@ void print_party(int pid)
 	printf("\nDONE\n");
 }
 
+void print_parliament()
+{
+	/*prints parliament*/
+	printf("\n\tMembers = ");
+	struct candidate *current = Parliament.members;
+	while(current != NULL)
+	{
+		printf("\n\t\t<%d> <%d> <%d>\n", current->cid, current->pid, current->votes);
+		current = current->next;
+	}
+	printf("\nDONE\n");
+}
+
 /*
  * Globals:
  * you may add some here for certain events
