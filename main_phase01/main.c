@@ -539,6 +539,7 @@ void count_votes(int did)
 			}
 			current_candidate->elected = 1;
 			Parties[i].nelected++;
+			Districts[did].allotted++;
 			current_candidate = current_candidate->next;
 			/* Add the elected candidate to the party*/
 			struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
@@ -564,6 +565,148 @@ void count_votes(int did)
 	}
 	
 	printf("\nDONE\n");
+}
+
+void form_government()
+{
+	/*forms government*/
+	int i;
+	int max_seats = 0;
+	int max_party = 0;
+	for(i = 1; i <= 5; i++)
+	{
+		if(Parties[i].nelected > max_seats)
+		{
+			max_seats = Parties[i].nelected;
+			max_party = i;
+		}
+	}
+	/*add the candidates to the remaining seats to the party */
+	int remaining_seats = Districts[i].seats - Districts[i].allotted;
+	for(i = 1; i <= 56; i++)
+	{
+		struct candidate *current_candidate = Districts[i].candidates;
+		while(remaining_seats > 0 && current_candidate != NULL)
+		{
+			if(current_candidate->pid == max_party)
+			{
+				current_candidate->elected = 1;
+				Parties[max_party].nelected++;
+				Districts[i].allotted++;
+				remaining_seats--;
+				/* Add candidate to the party*/
+				struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
+				if (elected_candidate == NULL) {
+					printf("FAILED\n");
+					return;
+				}
+				*elected_candidate = *current_candidate;
+				elected_candidate->next = Parties[max_party].elected;
+				Parties[max_party].elected = elected_candidate;
+			}
+			current_candidate = current_candidate->next;
+		}
+	}
+
+	/*find the most voted and non elected candidate/s if needed*/
+	int j = 0;
+	struct candidate *top_voted_non_elected[remaining_seats];
+	if(remaining_seats)
+	{
+		for(i = 0; i < 56; i++)
+		{
+			struct candidate *current_candidate = Districts[i].candidates;
+			while(current_candidate != NULL)
+			{
+				if(j < remaining_seats){
+					top_voted_non_elected[j] = current_candidate;
+					current_candidate->elected = 1;
+					j++;
+				}
+				else if(current_candidate->votes > top_voted_non_elected[j-1]->votes)
+				{
+					current_candidate->elected = 1;
+					top_voted_non_elected[j-1]->elected = 0;
+					top_voted_non_elected[j-1] = current_candidate;
+				}
+				if(j == remaining_seats)
+				{
+					*top_voted_non_elected = sort_array_decreasing(top_voted_non_elected, remaining_seats);
+				}
+			}
+		}
+		struct candidate *candidate_elected_array = Parties[max_party].elected;
+		merge_array_to_list(top_voted_non_elected, candidate_elected_array, max_party);
+	}
+	/*prints candidates*/
+	printf("\n\tSeats = ");
+	for(i = 1; i <= 56; i++){
+		struct candidate *current_candidate = Districts[i].candidates;
+		while(current_candidate != NULL){
+			int j;
+			for(j = 1; j <= 5; j++){
+				if(current_candidate == Parties[j].elected){
+					printf("\n\t\t<%d> <%d> <%d>, ", i, current_candidate->cid , current_candidate->votes);
+				}
+				
+			}
+			current_candidate = current_candidate->next;
+		}
+	}
+	printf("\nDONE\n");
+}
+
+void merge_array_to_list(struct candidate *array[], struct candidate *list, int max_party) {
+	struct candidate *merged_head = NULL;
+	struct candidate **last_ptr = &merged_head;
+
+	int i = 0;
+	while (i < sizeof(array) / sizeof(array[0]) && list != NULL) {
+		if (array[i]->votes >= list->votes) {
+			*last_ptr = array[i];
+			array[i] = array[i]->next;
+			i++;
+		} else {
+			*last_ptr = list;
+			list = list->next;
+		}
+		last_ptr = &((*last_ptr)->next);
+	}
+
+	while (i < sizeof(array) / sizeof(array[0])) {
+		*last_ptr = array[i];
+		array[i] = array[i]->next;
+		last_ptr = &((*last_ptr)->next);
+		i++;
+	}
+
+	while (list != NULL) {
+		*last_ptr = list;
+		list = list->next;
+		last_ptr = &((*last_ptr)->next);
+	}
+
+	*last_ptr = NULL;
+	Parties[max_party].elected = merged_head;
+}
+
+struct candidate *sort_array_decreasing(struct candidate *array[], int size)
+{
+	/*sorts array*/
+	int i, j;
+	for(i = 0; i < size; i++)
+	{
+		for(j = i + 1; j < size; j++)
+		{
+			if(array[i]->votes < array[j]->votes)
+			{
+				struct candidate *temp = array[i];
+				array[i] = array[j];
+				array[j] = temp;
+			}
+		}
+	}
+	return array;
 }
 
 /*
