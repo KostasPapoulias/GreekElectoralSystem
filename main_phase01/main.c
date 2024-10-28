@@ -771,6 +771,34 @@ void print_district(int did)
 	printf("\nDONE\n");
 }
 
+void print_station(int sid, int did)
+{
+	/*prints station*/
+	if(did < 1 || did > 56)
+	{
+		printf("\nFAILED\n");
+		return;
+	}
+	struct station *current_station = Districts[did].stations;
+	while(current_station != NULL)
+	{
+		if(current_station->sid == sid)
+		{
+			printf("\n\tRegistered = <%d>", current_station->registered);
+			printf("\n\tVoters = ");
+			struct voter *current_voter = current_station->voters;
+			while(current_voter != NULL)
+			{
+				printf("\n\t\t<%d> <%d>\n", current_voter->vid, current_voter->voted);
+				current_voter = current_voter->next;
+			}
+			break;
+		}
+		current_station = current_station->next;
+	}
+	printf("\nDONE\n");
+}
+
 /*
  * Globals:
  * you may add some here for certain events
