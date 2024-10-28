@@ -559,7 +559,7 @@ void count_votes(int did)
 		struct candidate *current_candidate = Parties[i].elected;
 		while(current_candidate != NULL)
 		{
-			printf("(<%d> <%d> <%d>), ", current_candidate->cid, i, current_candidate->votes);
+			printf("(<%d> <%d> <%d>)\n", current_candidate->cid, i, current_candidate->votes);
 			current_candidate = current_candidate->next;
 		}
 	}
@@ -646,7 +646,7 @@ void form_government()
 			int j;
 			for(j = 1; j <= 5; j++){
 				if(current_candidate == Parties[j].elected){
-					printf("\n\t\t<%d> <%d> <%d>, ", i, current_candidate->cid , current_candidate->votes);
+					printf("\n\t\t<%d> <%d> <%d>\n", i, current_candidate->cid , current_candidate->votes);
 				}
 				
 			}
@@ -736,9 +736,38 @@ void form_parliament()
 	struct candidate *current = Parliament.members;
 	while(current != NULL)
 	{
-		printf("\n\t\t<%d> <%d> <%d>, ", current->cid, current->pid, current->votes);
+		printf("\n\t\t<%d> <%d> <%d>\n", current->cid, current->pid, current->votes);
 		current = current->next;
 	}
+	printf("\nDONE\n");
+}
+
+void print_district(int did)
+{
+	/*prints district*/
+	if(did < 1 || did > 56)
+	{
+		printf("\nFAILED\n");
+		return;
+	}
+	printf("\n\tSeats = <%d>", Districts[did].seats);
+	printf("\n\tBlanks = <%d>", Districts[did].blanks);
+	printf("\n\tVoids = <%d>", Districts[did].voids);
+	struct candidate *current_candidate = Districts[did].candidates;
+	printf("\n\tCandidates = ");
+	while (current_candidate != NULL)
+	{
+		printf("\n\t\t<%d> <%d> <%d>\n", current_candidate->cid, current_candidate->pid, current_candidate->votes);
+		current_candidate = current_candidate->next;
+	}
+	printf("\n\tStations = ");
+	struct station *current_station = Districts[did].stations;
+	while(current_station != NULL)
+	{
+		printf("\n\t\t<%d>, ", current_station->sid);
+		current_station = current_station->next;
+	}
+	
 	printf("\nDONE\n");
 }
 
