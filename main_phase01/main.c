@@ -799,6 +799,24 @@ void print_station(int sid, int did)
 	printf("\nDONE\n");
 }
 
+void print_party(int pid)
+{
+	/*prints party*/
+	if(pid < 1 || pid > 5)
+	{
+		printf("\nFAILED\n");
+		return;
+	}
+	printf("\n\tElected = ");
+	struct candidate *current_candidate = Parties[pid].elected;
+	while(current_candidate != NULL)
+	{
+		printf("\n\t\t<%d> <%d>\n", current_candidate->cid, current_candidate->votes);
+		current_candidate = current_candidate->next;
+	}
+	printf("\nDONE\n");
+}
+
 /*
  * Globals:
  * you may add some here for certain events
