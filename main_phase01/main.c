@@ -709,6 +709,39 @@ struct candidate *sort_array_decreasing(struct candidate *array[], int size)
 	return array;
 }
 
+void form_parliament()
+{
+	/*forms parliament*/
+	struct candidate *current_candidate = NULL;
+	int i;
+	for(i = 1; i <= 5; i++)
+	{
+		current_candidate = Parties[i].elected;
+		while(current_candidate != NULL)
+		{
+			/* Add candidate to the parliament*/
+			struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
+			if (elected_candidate == NULL) {
+				printf("FAILED\n");
+				return;
+			}
+			*elected_candidate = *current_candidate;
+			elected_candidate->next = Parliament.members;
+			Parliament.members = elected_candidate;
+			current_candidate = current_candidate->next;
+		}
+	}
+	/*prints candidates*/
+	printf("\n\tMembers = ");
+	struct candidate *current = Parliament.members;
+	while(current != NULL)
+	{
+		printf("\n\t\t<%d> <%d> <%d>, ", current->cid, current->pid, current->votes);
+		current = current->next;
+	}
+	printf("\nDONE\n");
+}
+
 /*
  * Globals:
  * you may add some here for certain events
