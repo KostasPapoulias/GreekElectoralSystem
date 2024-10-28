@@ -34,12 +34,24 @@
 #define DPRINT(...)
 #endif /* DEBUG */
 
+void vote_candidate(int cid, int district_id);
+struct candidate **sort_array_decreasing(struct candidate *array[], int size);
+void merge_array_to_list(struct candidate *array[], int array_size, struct candidate *list, int max_party);
+/*
+ * Globals:
+ * you may add some here for certain events
+ * (such as D and P)
+ */
+struct district Districts[56];
+struct party Parties[5];
+struct parliament Parliament;
+
 
 void announce_elections(void)
 {
 	int i;
 	/*initialize Districts*/
-	for(i = 1; i <= 56; i++)
+	for(i = 0; i <= 56; i++)
 	{
 		Districts[i].did = i;
 		Districts[i].seats = 0;
@@ -631,12 +643,15 @@ void form_government()
 				}
 				if(j == remaining_seats)
 				{
-					*top_voted_non_elected = sort_array_decreasing(top_voted_non_elected, remaining_seats);
+					struct candidate **sorted_array = sort_array_decreasing(top_voted_non_elected, remaining_seats);
+					for (int k = 0; k < remaining_seats; k++) {
+						top_voted_non_elected[k] = sorted_array[k];
+					}
 				}
 			}
 		}
 		struct candidate *candidate_elected_array = Parties[max_party].elected;
-		merge_array_to_list(top_voted_non_elected, candidate_elected_array, max_party);
+		merge_array_to_list(top_voted_non_elected, remaining_seats, candidate_elected_array, max_party);
 	}
 	/*prints candidates*/
 	printf("\n\tSeats = ");
@@ -656,41 +671,41 @@ void form_government()
 	printf("\nDONE\n");
 }
 
-void merge_array_to_list(struct candidate *array[], struct candidate *list, int max_party) {
-	struct candidate *merged_head = NULL;
-	struct candidate **last_ptr = &merged_head;
+void merge_array_to_list(struct candidate *array[], int array_size, struct candidate *list, int max_party) {
+    struct candidate *merged_head = NULL;
+    struct candidate **last_ptr = &merged_head;
 
-	int i = 0;
-	while (i < sizeof(array) / sizeof(array[0]) && list != NULL) {
-		if (array[i]->votes >= list->votes) {
-			*last_ptr = array[i];
-			array[i] = array[i]->next;
-			i++;
-		} else {
-			*last_ptr = list;
-			list = list->next;
-		}
-		last_ptr = &((*last_ptr)->next);
-	}
+    int i = 0;
+    while (i < array_size && list != NULL) {
+        if (array[i]->votes >= list->votes) {
+            *last_ptr = array[i];
+            array[i] = array[i]->next;
+            i++;
+        } else {
+            *last_ptr = list;
+            list = list->next;
+        }
+        last_ptr = &(*last_ptr)->next;
+    }
 
-	while (i < sizeof(array) / sizeof(array[0])) {
-		*last_ptr = array[i];
-		array[i] = array[i]->next;
-		last_ptr = &((*last_ptr)->next);
-		i++;
-	}
+    while (i < array_size) {
+        *last_ptr = array[i];
+        array[i] = array[i]->next;
+        last_ptr = &(*last_ptr)->next;
+        i++;
+    }
 
-	while (list != NULL) {
-		*last_ptr = list;
-		list = list->next;
-		last_ptr = &((*last_ptr)->next);
-	}
+    while (list != NULL) {
+        *last_ptr = list;
+        list = list->next;
+        last_ptr = &(*last_ptr)->next;
+    }
 
-	*last_ptr = NULL;
-	Parties[max_party].elected = merged_head;
+    *last_ptr = NULL;
+    Parties[max_party].elected = merged_head; // Update the elected list
 }
 
-struct candidate *sort_array_decreasing(struct candidate *array[], int size)
+struct candidate **sort_array_decreasing(struct candidate *array[], int size)
 {
 	/*sorts array*/
 	int i, j;
@@ -830,14 +845,7 @@ void print_parliament()
 	printf("\nDONE\n");
 }
 
-/*
- * Globals:
- * you may add some here for certain events
- * (such as D and P)
- */
-struct district Districts[56];
-struct party Parties[5];
-struct parliament Parliament;
+
 
 void destroy_structures(void)
 {
