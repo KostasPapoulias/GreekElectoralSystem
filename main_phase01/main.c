@@ -340,6 +340,7 @@ void delete_empty_stations()
 
         while (current != NULL) {
             if (current->registered == 0) { 
+				/*prints stations*/
                 printf("\n\t<%d> <%d>", current->sid, i); 
                 if (prev == NULL) {
                     Districts[i].stations = current->next;
@@ -356,16 +357,7 @@ void delete_empty_stations()
         }
     }
 
-	/*prints stations*/
-	// for(i = 1; i <= 56; i++)
-	// {
-	// 	struct station *current = Districts[i].stations;
-	// 	while(current != NULL)
-	// 	{
-	// 		printf("\n\t<%d> <%d>, ", current->sid, i);
-	// 		current = current->next;
-	// 	}
-	// }
+	
 	printf("\nDONE\n");
 }
 
@@ -505,9 +497,6 @@ void count_votes(int did)
 	valid_votes = valid_votes <= 0 ? 0 : valid_votes;
 	magnitude[did] = valid_votes / Districts[did].seats;
 	int i;
-	printf("\n\tValid = <%d>", valid_votes);
-	printf("\n\tSeats = <%d>", Districts[did].seats);
-	printf("\n\tMag = <%d>", magnitude[did]);
 
 	/*counts the seats per party*/
 	for(i = 0; i < 5; i++)
@@ -515,7 +504,6 @@ void count_votes(int did)
 		if(magnitude[did] > 0)
 		{
 			seats_per_party[i][did] = votes_party[i][did] / magnitude[did];
-			printf("\n\t\t<%d><%d>", i, seats_per_party[i][did]);
 		}
 		else
 		{
@@ -605,33 +593,48 @@ void form_government()
 			max_party = i;
 		}
 	}
+	printf("\n\tParty = <%d>", max_party);
+	int remaining_seats;
 	/*add the candidates to the remaining seats to the party */
-	int remaining_seats = Districts[i].seats - Districts[i].allotted;
 	for(i = 1; i <= 56; i++)
 	{
+		remaining_seats = Districts[i].seats - Districts[i].allotted;
+
 		struct candidate *current_candidate = Districts[i].candidates;
 		while(remaining_seats > 0 && current_candidate != NULL)
 		{
 			if(current_candidate->pid == max_party)
-			{
-				current_candidate->elected = 1;
-				Parties[max_party].nelected++;
-				Districts[i].allotted++;
-				remaining_seats--;
-				/* Add candidate to the party*/
-				struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
-				if (elected_candidate == NULL) {
-					printf("FAILED\n");
-					return;
+			{	
+				if(!current_candidate->elected){
+					current_candidate->elected = 1;
+					Parties[max_party].nelected++;
+					Districts[i].allotted++;
+					remaining_seats--;
+					/* Add candidate to the party*/
+					struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
+					if (elected_candidate == NULL) {
+						printf("FAILED\n");
+						return;
+					}
+					current_candidate->elected = 1;
+					elected_candidate->cid = current_candidate->cid;
+					elected_candidate->pid = current_candidate->pid;
+					elected_candidate->votes = current_candidate->votes;
+					elected_candidate->elected = 1;
+					elected_candidate->next = NULL;
+
+					struct candidate *current_elected_candidate = Parties[max_party].elected;
+
+					while(current_elected_candidate->next != NULL)
+					{
+						current_elected_candidate = current_elected_candidate->next;
+					}
+					current_elected_candidate->next = elected_candidate;
 				}
-				*elected_candidate = *current_candidate;
-				elected_candidate->next = Parties[max_party].elected;
-				Parties[max_party].elected = elected_candidate;
 			}
 			current_candidate = current_candidate->next;
 		}
 	}
-
 	/*find the most voted and non elected candidate/s if needed*/
 	int j = 0;
 	struct candidate *top_voted_non_elected[remaining_seats];
@@ -643,23 +646,35 @@ void form_government()
 			while(current_candidate != NULL)
 			{
 				if(j < remaining_seats){
-					top_voted_non_elected[j] = current_candidate;
-					current_candidate->elected = 1;
-					j++;
+					if(current_candidate->elected != 1)
+					{
+						top_voted_non_elected[j]->cid = current_candidate->cid;
+						top_voted_non_elected[j]->pid = current_candidate->pid;
+						top_voted_non_elected[j]->votes = current_candidate->votes;
+						top_voted_non_elected[j]->next = NULL;
+						top_voted_non_elected[j]->elected = 1;
+						current_candidate->elected = 1;
+						j++;
+					}
 				}
-				else if(current_candidate->votes > top_voted_non_elected[j-1]->votes)
-				{
-					current_candidate->elected = 1;
-					top_voted_non_elected[j-1]->elected = 0;
-					top_voted_non_elected[j-1] = current_candidate;
-				}
-				if(j == remaining_seats)
+				else if(j == remaining_seats)
 				{
 					struct candidate **sorted_array = sort_array_decreasing(top_voted_non_elected, remaining_seats);
 					for (int k = 0; k < remaining_seats; k++) {
 						top_voted_non_elected[k] = sorted_array[k];
 					}
+					struct candidate *last_element = top_voted_non_elected[remaining_seats - 1];
+					int k = remaining_seats - 2;
+
+					while (k >= 0 && top_voted_non_elected[k]->votes < last_element->votes) {
+						top_voted_non_elected[k + 1]->elected = 0;
+						top_voted_non_elected[k + 1] = top_voted_non_elected[k];
+						top_voted_non_elected[k]->elected = 1;
+						k--;
+					}
+					top_voted_non_elected[k + 1] = last_element;
 				}
+				current_candidate = current_candidate->next;
 			}
 		}
 		struct candidate *candidate_elected_array = Parties[max_party].elected;
@@ -670,12 +685,12 @@ void form_government()
 	for(i = 1; i <= 56; i++){
 		struct candidate *current_candidate = Districts[i].candidates;
 		while(current_candidate != NULL){
-			int j;
-			for(j = 0; j < 5; j++){
-				if(current_candidate == Parties[j].elected){
-					printf("\n\t\t<%d> <%d> <%d>\n", i, current_candidate->cid , current_candidate->votes);
+			struct candidate *current_party_candidate = Parties[max_party].elected;
+				while(current_party_candidate != NULL){
+				if(current_candidate->cid == current_party_candidate->cid){
+					printf("\n\t\t<%d> <%d> <%d> <%d>\n", i, current_candidate->cid , current_candidate->votes, current_candidate->pid);
 				}
-				
+				current_party_candidate = current_party_candidate->next;
 			}
 			current_candidate = current_candidate->next;
 		}
@@ -714,7 +729,7 @@ void merge_array_to_list(struct candidate *array[], int array_size, struct candi
     }
 
     *last_ptr = NULL;
-    Parties[max_party].elected = merged_head; // Update the elected list
+    Parties[max_party].elected = merged_head; 
 }
 
 struct candidate **sort_array_decreasing(struct candidate *array[], int size)
@@ -741,20 +756,32 @@ void form_parliament()
 	/*forms parliament*/
 	struct candidate *current_candidate = NULL;
 	int i;
-	for(i = 0; i <4; i++)
+	for(i = 0; i <5; i++)
 	{
 		current_candidate = Parties[i].elected;
 		while(current_candidate != NULL)
 		{
-			/* Add candidate to the parliament*/
+			/* Add candidate to the parliament */
 			struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
 			if (elected_candidate == NULL) {
 				printf("FAILED\n");
 				return;
 			}
-			*elected_candidate = *current_candidate;
-			elected_candidate->next = Parliament.members;
-			Parliament.members = elected_candidate;
+			elected_candidate->cid = current_candidate->cid;
+			elected_candidate->pid = current_candidate->pid;
+			elected_candidate->votes = current_candidate->votes;
+			elected_candidate->elected = 1;
+			elected_candidate->next = NULL;
+
+			if (Parliament.members == NULL) {
+				Parliament.members = elected_candidate;
+			} else {
+				struct candidate *current_elected_candidate = Parliament.members;
+				while (current_elected_candidate->next != NULL) {
+					current_elected_candidate = current_elected_candidate->next;
+				}
+				current_elected_candidate->next = elected_candidate;
+			}
 			current_candidate = current_candidate->next;
 		}
 	}
@@ -791,7 +818,7 @@ void print_district(int did)
 	struct station *current_station = Districts[did].stations;
 	while(current_station != NULL)
 	{
-		printf("\n\t\t<%d>, ", current_station->sid);
+		printf("<%d>, ", current_station->sid);
 		current_station = current_station->next;
 	}
 	
@@ -838,7 +865,10 @@ void print_party(int pid)
 	struct candidate *current_candidate = Parties[pid].elected;
 	while(current_candidate != NULL)
 	{
-		printf("\n\t\t<%d> <%d>\n", current_candidate->cid, current_candidate->votes);
+		if(current_candidate->elected == 1)
+		{
+			printf("\n\t\t<%d> <%d>\n", current_candidate->cid, current_candidate->votes);
+		}
 		current_candidate = current_candidate->next;
 	}
 	printf("\nDONE\n");
@@ -867,6 +897,56 @@ void destroy_structures(void)
 	 * and free all memory associated
 	 * with list nodes here
 	 */
+
+	/* Free Districts */
+	int i;
+	for(i = 0; i <= 56; i++)
+	{
+		struct station *current_station = Districts[i].stations;
+		while(current_station != NULL)
+		{
+			struct voter *current_voter = current_station->voters;
+			while(current_voter != NULL)
+			{
+				struct voter *temp = current_voter;
+				current_voter = current_voter->next;
+				free(temp);
+			}
+			struct station *temp = current_station;
+			free(temp);
+
+			current_station = current_station->next;
+
+		}
+		struct candidate *current_candidate = Districts[i].candidates;
+		while(current_candidate != NULL)
+		{
+			struct candidate *temp = current_candidate;
+			current_candidate = current_candidate->next;
+			free(temp);
+		}
+	}
+	/*free Parties*/
+	for(i = 0; i < 5; i++)
+	{
+		struct candidate *current_candidate = Parties[i].elected;
+		while(current_candidate != NULL)
+		{
+			struct candidate *temp = current_candidate;
+			current_candidate = current_candidate->next;
+			free(temp);
+		}
+	}
+
+	/*free Parliament*/
+	struct candidate *current_member = Parliament.members;
+	while(current_member != NULL)
+	{
+		struct candidate *temp = current_member;
+		free(temp);
+		current_member = current_member->next;
+
+	}
 }
 
 int main(int argc, char *argv[])
@@ -994,9 +1074,10 @@ int main(int argc, char *argv[])
 				}
 				printf("M %d\n", did);
 				count_votes(did);
+				break;
 			case 'G':
-				// printf("G\n");
-				// form_government();
+				printf("G\n");
+				form_government();
 				break;
 			case 'N':
 			printf("N\n");
@@ -1010,6 +1091,7 @@ int main(int argc, char *argv[])
 				}
 				printf("I %d\n", did);
 				print_district(did);
+				break;
 			case 'J':
 				if (sscanf(trimmed_line, "J %d %d", &sid, &did) != 2) {
 					fprintf(stderr, "Event J parsing error\n");
