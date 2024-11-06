@@ -793,39 +793,9 @@ struct candidate **sort_array_decreasing(struct candidate *array[], int size)
 void form_parliament()
 {
 	/*forms parliament*/
-	struct candidate *current_candidate = NULL;
-	int i;
-
+	
 	Parliament.members = Parties[max_party].elected;
-	// for(i = 0; i <5; i++)
-	// {
-	// 	current_candidate = Parties[i].elected;
-	// 	while(current_candidate != NULL)
-	// 	{
-	// 		/* Add candidate to the parliament */
-	// 		struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
-	// 		if (elected_candidate == NULL) {
-	// 			printf("FAILED\n");
-	// 			return;
-	// 		}
-	// 		elected_candidate->cid = current_candidate->cid;
-	// 		elected_candidate->pid = current_candidate->pid;
-	// 		elected_candidate->votes = current_candidate->votes;
-	// 		elected_candidate->elected = 1;
-	// 		elected_candidate->next = NULL;
-
-	// 		if (Parliament.members == NULL) {
-	// 			Parliament.members = elected_candidate;
-	// 		} else {
-	// 			struct candidate *current_elected_candidate = Parliament.members;
-	// 			while (current_elected_candidate->next != NULL) {
-	// 				current_elected_candidate = current_elected_candidate->next;
-	// 			}
-	// 			current_elected_candidate->next = elected_candidate;
-	// 		}
-	// 		current_candidate = current_candidate->next;
-	// 	}
-	// }
+	
 	/*prints candidates*/
 	printf("\n\tMembers = ");
 	struct candidate *current = Parliament.members;
