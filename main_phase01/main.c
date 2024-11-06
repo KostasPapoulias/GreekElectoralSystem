@@ -27,7 +27,7 @@
  * enable debugging prints
  * or comment to disable it
  */
-#define DEBUG 
+/*#define DEBUG*/ 
 #ifdef DEBUG
 #define DPRINT(...) fprintf(stderr, __VA_ARGS__);
 #else
@@ -45,6 +45,7 @@ void merge_array_to_list(struct candidate *array[], int array_size, struct candi
 struct district Districts[57];
 struct party Parties[5];
 struct parliament Parliament;
+int max_party;
 
 
 void announce_elections(void)
@@ -70,6 +71,8 @@ void announce_elections(void)
 	}
 	/*initialize parliament*/
 	Parliament.members = NULL;
+
+	max_party = 0;
 }
 
 int create_district(int did, int seats)
@@ -333,7 +336,7 @@ int unregister_voter(int vid)
 void delete_empty_stations()
 {
 	/*removes empty stations*/
-	int i, esc = 0;
+	int i;
 	 for (i = 1; i <= 56; i++) { 
         struct station *current = Districts[i].stations;
         struct station *prev = NULL;
@@ -522,7 +525,6 @@ void count_votes(int did)
 			printf("\n\tFAILED");
 		}
 		int j ;
-		int prev = 0;
 		for(j = 0; j < seats_per_party[i][did]; j++)
 		{
 			while(current_candidate != NULL){
@@ -584,7 +586,6 @@ void form_government()
 	/*forms government*/
 	int i;
 	int max_seats = 0;
-	int max_party = 0;
 	for(i = 0; i < 5; i++)
 	{
 		if(Parties[i].nelected > max_seats)
@@ -638,7 +639,7 @@ void form_government()
 	/*find the most voted and non elected candidate/s if needed*/
 	int j = 0;
 	struct candidate *top_voted_non_elected[remaining_seats];
-	if(remaining_seats)
+	if(remaining_seats > 0)
 	{
 		for(i = 1; i <= 56; i++)
 		{
@@ -688,7 +689,7 @@ void form_government()
 			struct candidate *current_party_candidate = Parties[max_party].elected;
 				while(current_party_candidate != NULL){
 				if(current_candidate->cid == current_party_candidate->cid){
-					printf("\n\t\t<%d> <%d> <%d> <%d>\n", i, current_candidate->cid , current_candidate->votes, current_candidate->pid);
+					printf("\n\t\t<%d> <%d> <%d>\n", i, current_candidate->cid , current_candidate->votes);
 				}
 				current_party_candidate = current_party_candidate->next;
 			}
@@ -756,35 +757,37 @@ void form_parliament()
 	/*forms parliament*/
 	struct candidate *current_candidate = NULL;
 	int i;
-	for(i = 0; i <5; i++)
-	{
-		current_candidate = Parties[i].elected;
-		while(current_candidate != NULL)
-		{
-			/* Add candidate to the parliament */
-			struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
-			if (elected_candidate == NULL) {
-				printf("FAILED\n");
-				return;
-			}
-			elected_candidate->cid = current_candidate->cid;
-			elected_candidate->pid = current_candidate->pid;
-			elected_candidate->votes = current_candidate->votes;
-			elected_candidate->elected = 1;
-			elected_candidate->next = NULL;
 
-			if (Parliament.members == NULL) {
-				Parliament.members = elected_candidate;
-			} else {
-				struct candidate *current_elected_candidate = Parliament.members;
-				while (current_elected_candidate->next != NULL) {
-					current_elected_candidate = current_elected_candidate->next;
-				}
-				current_elected_candidate->next = elected_candidate;
-			}
-			current_candidate = current_candidate->next;
-		}
-	}
+	Parliament.members = Parties[max_party].elected;
+	// for(i = 0; i <5; i++)
+	// {
+	// 	current_candidate = Parties[i].elected;
+	// 	while(current_candidate != NULL)
+	// 	{
+	// 		/* Add candidate to the parliament */
+	// 		struct candidate *elected_candidate = (struct candidate *)malloc(sizeof(struct candidate));
+	// 		if (elected_candidate == NULL) {
+	// 			printf("FAILED\n");
+	// 			return;
+	// 		}
+	// 		elected_candidate->cid = current_candidate->cid;
+	// 		elected_candidate->pid = current_candidate->pid;
+	// 		elected_candidate->votes = current_candidate->votes;
+	// 		elected_candidate->elected = 1;
+	// 		elected_candidate->next = NULL;
+
+	// 		if (Parliament.members == NULL) {
+	// 			Parliament.members = elected_candidate;
+	// 		} else {
+	// 			struct candidate *current_elected_candidate = Parliament.members;
+	// 			while (current_elected_candidate->next != NULL) {
+	// 				current_elected_candidate = current_elected_candidate->next;
+	// 			}
+	// 			current_elected_candidate->next = elected_candidate;
+	// 		}
+	// 		current_candidate = current_candidate->next;
+	// 	}
+	// }
 	/*prints candidates*/
 	printf("\n\tMembers = ");
 	struct candidate *current = Parliament.members;
