@@ -676,7 +676,9 @@ void form_government()
 	}
 	/*find the most voted and non elected candidate/s if needed*/
 	int j = 0;
-	struct candidate *top_voted_non_elected[remaining_seats];
+
+	struct candidate **top_voted_non_elected = (struct candidate **)malloc(remaining_seats * sizeof(struct candidate *));
+    
 	if(remaining_seats > 0)
 	{
 		for(i = 1; i <= 56; i++)
