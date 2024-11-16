@@ -103,17 +103,28 @@ int create_station(int sid, int did)
         printf("\nFAILED\n");
         return 1;
     }
+	
 	struct station *new_station = (struct station *)malloc(sizeof(struct station));
 	if(new_station == NULL)
 	{
 		printf("FAILED\n");
 		return 1;
 	}
+	/*create sentinel node*/
+	new_station->vsentinel = (struct voter *)malloc(sizeof(struct voter));
+    if (new_station->vsentinel == NULL) {
+        printf("FAILED\n");
+        free(new_station);
+        return 1;
+    }
+    new_station->vsentinel->vid = -2; 
+    new_station->vsentinel->next = NULL;
+
 	new_station->sid = sid;
 	new_station->registered = 0;
-	new_station->voters = NULL;
-	new_station->vsentinel = NULL;
+	new_station->voters = new_station->vsentinel;
 	new_station->next = NULL;
+
 	if(Districts[did].stations == NULL)
 	{
 		Districts[did].stations = new_station;
@@ -242,16 +253,16 @@ int register_voter(int vid, int did, int sid)
 	{
 		if(current->sid == sid)
 		{
-			if(current->voters == NULL)
+			if(current->voters == current->vsentinel)
 			{
 				current->voters = new_voter;
 			}
 			else
 			{
 				struct voter *voter_current = current->voters;
-				while(voter_current != NULL)
+				while(voter_current != current->vsentinel)
 				{
-					if(voter_current->next == NULL)
+					if(voter_current->next == current->vsentinel)
 					{
 						voter_current->next = new_voter;
 						break;
@@ -259,6 +270,7 @@ int register_voter(int vid, int did, int sid)
 					voter_current = voter_current->next;
 				}
 			}
+			new_voter->next = current->vsentinel;
 			break;
 		}
 		current = current->next;
@@ -269,7 +281,7 @@ int register_voter(int vid, int did, int sid)
 	/*prints voters*/
 	printf("\n\tVoters = ");
 	struct voter *voter_current = current->voters;
-	while(voter_current != NULL)
+	while(voter_current != current->vsentinel)
 	{
 		printf("<%d>, ", voter_current->vid);
 		voter_current = voter_current->next;
@@ -292,11 +304,12 @@ int unregister_voter(int vid)
         current_station = Districts[i].stations;
         while (current_station != NULL) {
             struct voter *current_voter = current_station->voters;
-            struct voter *prev_voter = NULL;
+            struct voter *prev_voter = current_station->vsentinel;
+			current_station->vsentinel->vid = vid;
 
-            while (current_voter != NULL) {
-                if (current_voter->vid == vid) {
-                    if (prev_voter == NULL) {
+            while (current_voter != current_station->vsentinel) {
+                if (current_voter->vid == current_station->vsentinel->vid) {
+                    if (prev_voter == current_station->vsentinel) {
                         current_station->voters = current_voter->next;
                     } else {
                         prev_voter->next = current_voter->next;
@@ -313,6 +326,7 @@ int unregister_voter(int vid)
         }
         if (esc) break;
     }
+	current_station->vsentinel->vid = -2;
 	if(esc == 0)
 	{
 		printf("\nFAILED\n");
@@ -324,7 +338,7 @@ int unregister_voter(int vid)
 	printf("\n\t<%d> <%d>", i, current_station->sid);
 	printf("\n\tVoters = ");
 	struct voter *voter_current = current_station->voters;
-	while(voter_current != NULL)
+	while(voter_current != current_station->vsentinel)
 	{
 		printf("<%d>, ", voter_current->vid);
 		voter_current = voter_current->next;
@@ -382,9 +396,10 @@ int vote(int vid, int sid, int cid)
 			if(current_station->sid == sid)
 			{
 				struct voter *current_voter = current_station->voters;
-				while(current_voter != NULL)
+				current_station->vsentinel->vid = vid;
+				while(current_voter != current_station->vsentinel)
 				{
-					if(current_voter->vid == vid)
+					if(current_voter->vid == current_station->vsentinel->vid)
 					{
 						if(cid == 0 || cid == 1)
 						{
@@ -418,6 +433,7 @@ int vote(int vid, int sid, int cid)
 			break;
 		}
 	}
+	current_station->vsentinel->vid = -2;
 	if(esc == 0)
 	{
 		printf("\nFAILED\n");
@@ -854,7 +870,7 @@ void print_station(int sid, int did)
 			printf("\n\tRegistered = <%d>", current_station->registered);
 			printf("\n\tVoters = ");
 			struct voter *current_voter = current_station->voters;
-			while(current_voter != NULL)
+			while(current_voter != current_station->vsentinel)
 			{
 				printf("\n\t\t<%d> <%d>\n", current_voter->vid, current_voter->voted);
 				current_voter = current_voter->next;
