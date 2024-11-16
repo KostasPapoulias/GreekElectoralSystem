@@ -424,6 +424,7 @@ int vote(int vid, int sid, int cid)
 					}
 					current_voter = current_voter->next;
 				}
+				current_station->vsentinel->vid = -2;
 				break;
 			}
 			current_station = current_station->next;
@@ -433,7 +434,7 @@ int vote(int vid, int sid, int cid)
 			break;
 		}
 	}
-	current_station->vsentinel->vid = -2;
+
 	if(esc == 0)
 	{
 		printf("\nFAILED\n");
