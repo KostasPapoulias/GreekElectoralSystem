@@ -19,7 +19,36 @@ BonusCandidatesBST BonusCandidates;
 
 void EventAnnounceElections() {
     DebugPrint("A\n");
-    // TODO
+    /* Initialize districts*/
+    int i;
+    for (i = 0; i < DISTRICTS_SZ; i++) {
+        Districts.data[i].did = DefaultDid;
+        Districts.data[i].seats = 0;
+        Districts.data[i].blanks = 0;
+        Districts.data[i].invalids = 0;
+        for (int j = 0; j < PARTIES_SZ; j++) {
+            Districts.data[i].partyVotes[j] = 0;
+        }
+    }
+
+    int hashTableSize = 59; /*prime number larger than districts size*/
+
+    /* Initialize stations hash table*/
+    Stations.data = (StationsList*)malloc(sizeof(StationsList) * hashTableSize);
+    for (int i = 0; i < hashTableSize; i++) {
+        Stations.data[i].begin = NULL;        
+    }
+    Stations.capacity = hashTableSize;
+    /* Initialize parties*/
+    for(i = 0; i < PARTIES_SZ; i++) {
+        Parties.data[i].pid = i;
+        Parties.data[i].electedCount = 0;
+        Parties.data[i].candidates.root = NULL;
+    }
+    /* Initialize parliament*/
+    Parliament.begin = NULL;
+    DebugPrint("Done\n");
+
 }
 void EventCreateDistrict(int did, int seats) {
     DebugPrint("D %d %d\n", did, seats);
