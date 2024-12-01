@@ -63,6 +63,33 @@ void printVoters(Voter* root) {
     printVoters(root->lc);
     printVoters(root->rc);
 }
+Voter* findVoter(Voter* root, int vid) {
+    if (root == NULL) {
+        return NULL;
+    }
+    if (root->vid == vid) {
+        return root;
+    }
+    Voter* left = findVoter(root->lc, vid);
+    if (left != NULL) {
+        return left;
+    }
+    return findVoter(root->rc, vid);
+}
+Candidate* VoteForCandidate(Candidate* root, int cid) {
+    if (root == NULL) {
+        return NULL;
+    }
+    if (root->cid == cid) {
+        root->votes++;
+        return root;
+    }
+    Candidate* left = VoteForCandidate(root->lc, cid);
+    if (left != NULL) {
+        return left;
+    }
+    return VoteForCandidate(root->rc, cid);
+}
 void EventAnnounceElections() {
     DebugPrint("A\n");
     /* Initialize districts*/
@@ -190,7 +217,37 @@ void EventRegisterVoter(int vid, int sid) {
 }
 void EventVote(int vid, int sid, int cid, int pid) {
     DebugPrint("V %d %d %d %d\n", vid, sid, cid, pid);
-    // TODO
+    if (sid < 0 || sid >= ParsedMaxStationsCount) {
+        return;
+    }
+    int hash = sid % Stations.capacity;
+    int voterDID;
+    Station* current = Stations.data[hash].begin;
+    while (current != NULL) {
+        if (current->sid == sid) {
+            Voter* currentVoter = current->voters.root;
+            currentVoter = findVoter(currentVoter, vid);
+            currentVoter->voted = true;
+            voterDID = current->did;
+        }
+        current = current->next;
+    }
+    if(cid != BlankDid && cid != InvalidDid) {
+        Parties.data[pid].candidates.root = VoteForCandidate(Parties.data[pid].candidates.root, cid);
+        Districts.data[voterDID].partyVotes[pid]++;
+    }
+    else{
+        cid == BlankDid ? Districts.data[voterDID].blanks++ : Districts.data[voterDID].invalids++;
+    }
+    printf("\tDistricts[%d]:\n", voterDID);
+    printf("\t\tBlanks:\n\t\t\t %d\n", Districts.data[voterDID].blanks);
+    printf("\t\tInvalids:\n\t\t\t %d\n", Districts.data[voterDID].invalids);
+    printf("\t\tParty Votes[%d]:\n", pid);
+    int i;
+    for (i = 0; i < PARTIES_SZ; i++) {
+        printf("\t\t\t<%d> <%d>\n", i, Districts.data[voterDID].partyVotes[i]);
+    }
+    DebugPrint("Done\n");
 }
 void EventCountVotes(int did) {
     DebugPrint("M %d\n", did);
