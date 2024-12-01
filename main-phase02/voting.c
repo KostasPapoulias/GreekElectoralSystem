@@ -17,6 +17,52 @@ PartiesArray Parties;
 ParliamentList Parliament;
 BonusCandidatesBST BonusCandidates;
 
+Candidate* insertCandidate(Candidate* root, Candidate* newCandidate) {
+    if (root == NULL) {
+        return newCandidate;
+    }
+    if (newCandidate->cid < root->cid) {
+        root->lc = insertCandidate(root->lc, newCandidate);
+    } else if (newCandidate->cid > root->cid) {
+        root->rc = insertCandidate(root->rc, newCandidate);
+    }
+    return root;
+}
+void printCandidates(Candidate* root) {
+    if (root == NULL) {
+        return;
+    }
+    printCandidates(root->lc);
+    printf("\t\t<%d> <%d>,\n", root->cid, root->did);
+    printCandidates(root->rc);
+}
+Voter* insertVoter(Voter* root, Voter* newVoter) {
+    if (root == NULL) {
+        return newVoter;
+    }
+
+    if (root->lc == NULL) {
+        root->lc = newVoter;
+    } else if (root->rc == NULL) {
+        root->rc = newVoter;
+    } else {
+        Voter* inserted = insertVoter(root->lc, newVoter);
+        if (inserted == newVoter) {
+            return root;
+        }
+        root->rc = insertVoter(root->rc, newVoter);
+    }
+
+    return root;
+}
+void printVoters(Voter* root) {
+    if (root == NULL) {
+        return;
+    }
+    printf("<%d> ,", root->vid);
+    printVoters(root->lc);
+    printVoters(root->rc);
+}
 void EventAnnounceElections() {
     DebugPrint("A\n");
     /* Initialize districts*/
@@ -52,19 +98,95 @@ void EventAnnounceElections() {
 }
 void EventCreateDistrict(int did, int seats) {
     DebugPrint("D %d %d\n", did, seats);
-    // TODO
+    if (did < 0 || did >= DISTRICTS_SZ) {
+        return;
+    }
+    Districts.data[did].did = did;
+    Districts.data[did].seats = seats;
+    int i;
+    printf("\tDistricts: \n\t\t");
+    for (i = 0; i < did; i++) {
+        printf("<%d>, ", Districts.data[i].did);
+    }
+    DebugPrint("\nDone\n");
 }
 void EventCreateStation(int sid, int did) {
     DebugPrint("S %d %d\n", sid, did);
-    // TODO
+    if (did < 0 || did >= DISTRICTS_SZ) {
+        return;
+    }
+    if (sid < 0 || sid >= ParsedMaxStationsCount) {
+        return;
+    }
+    Station* newStation = (Station*)malloc(sizeof(Station));
+    newStation->sid = sid;
+    newStation->did = did;
+    newStation->registered = 0;
+    newStation->voters.root = NULL;
+    newStation->next = NULL;
+    int hash = sid % Stations.capacity;
+    if (Stations.data[hash].begin == NULL) {
+        Stations.data[hash].begin = newStation;
+    } else {
+        Station* current = Stations.data[hash].begin;
+        while (current->next != NULL) {
+            current = current->next;
+        }
+        current->next = newStation;
+    }
+    printf("\tStations[%d]\n\t\t", hash);
+    Station* current = Stations.data[hash].begin;
+    while (current != NULL) {
+        printf("<%d>, ", current->sid);
+        current = current->next;
+    }
+    DebugPrint("Done\n");
+
 }
 void EventRegisterCandidate(int cid, int pid, int did) {
     DebugPrint("C %d %d %d\n", cid, pid, did);
-    // TODO
+    if (pid < 0 || pid >= PARTIES_SZ) {
+        return;
+    }
+    if (did < 0 || did >= DISTRICTS_SZ) {
+        return;
+    }
+    Candidate* newCandidate = (Candidate*)malloc(sizeof(Candidate));
+    newCandidate->cid = cid;
+    newCandidate->pid = pid;
+    newCandidate->did = did;
+    newCandidate->votes = 0;
+    newCandidate->lc = NULL;
+    newCandidate->rc = NULL;
+    Parties.data[pid].candidates.root = InsertCandidate(Parties.data[pid].candidates.root, newCandidate);
+    printf("\tCandidates[%d]:\n", pid);
+    printCandidates(Parties.data[pid].candidates.root);
+    DebugPrint("Done\n");
 }
 void EventRegisterVoter(int vid, int sid) {
     DebugPrint("R %d %d\n", vid, sid);
-    // TODO
+    if (sid < 0 || sid >= ParsedMaxStationsCount) {
+        return;
+    }
+    int hash = sid % Stations.capacity;
+    Station* current = Stations.data[hash].begin;
+    while (current != NULL) {
+        if (current->sid == sid) {
+            Voter* newVoter = (Voter*)malloc(sizeof(Voter));
+            newVoter->vid = vid;
+            newVoter->voted = false;
+            newVoter->lc = NULL;
+            newVoter->rc = NULL;
+            current->voters.root = InsertVoter(current->voters.root, newVoter);
+            current->registered++;
+            break;
+        }
+        current = current->next;
+    }
+    printf("\tVoters[%d]:\n\t\t", sid);
+    Voter* currentVoter = current->voters.root;
+    printVoters(currentVoter);
+    DebugPrint("Done\n");    
 }
 void EventVote(int vid, int sid, int cid, int pid) {
     DebugPrint("V %d %d %d %d\n", vid, sid, cid, pid);
