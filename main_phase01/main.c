@@ -716,7 +716,7 @@ void form_government()
 					}
 				}
 				else if(j == remaining_seats)
-				{
+				{ 
 					struct candidate **sorted_array = sort_array_decreasing(top_voted_non_elected, remaining_seats);
 					for (int k = 0; k < remaining_seats; k++) {
 						top_voted_non_elected[k] = sorted_array[k];
