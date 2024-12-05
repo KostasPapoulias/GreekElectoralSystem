@@ -13,10 +13,16 @@
  */
 
 #include <ctype.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "voting.h"
+
+#define DISTRICTS_SZ 56
+#define PARTIES_SZ 5
 
 /*** Parsing Utilities ***/
 
@@ -44,57 +50,17 @@ bool IsEmptyLine(const char* line) {
     return true;
 }
 
-void ReportOutOfBounds(const char* line, unsigned lineIdx, unsigned arg, unsigned minLimit, unsigned maxLimit) {
+void ReportOutOfBounds(const char* line, int lineIdx, int arg, int minLimit, int maxLimit) {
     if ((minLimit <= arg) && (arg < maxLimit)) return;
-    printf("On line %u: %s\n", lineIdx, line);
-    printf("argument %u out of bounds [%u, %u)\n", arg, minLimit, maxLimit);
+    printf("On line %d: %s\n", lineIdx, line);
+    printf("argument %d out of bounds [%d, %d)\n", arg, minLimit, maxLimit);
     exit(EXIT_FAILURE);
 }
 
-void ReportInvalidParse(const char* line, unsigned lineIdx, int actual, int expected) {
+void ReportInvalidParse(const char* line, int lineIdx, int actual, int expected) {
     if (actual == expected) return;
-    printf("On line %u: %s\n", lineIdx, line);
+    printf("On line %d: %s\n", lineIdx, line);
     printf("sscanf argument assignment error: expected %d, assigned %d\n", expected, actual);
-    exit(EXIT_FAILURE);
-}
-
-void EventParsedArgumentInitialization(const char* line, unsigned lineIdx) {
-    const char* nameAddr = &(line[2]);
-    char name[256];
-    int charsRead;
-    int count = sscanf(nameAddr, " %s%n", name, &charsRead);
-    const char* valAddr = nameAddr + charsRead;
-    ReportInvalidParse(line, lineIdx, count, 1);
-    /*     if (strcmp(name, "Primes") == 0) {
-            for (unsigned i = 0; i < PARSED_PRIMES_SZ; ++i) {
-                unsigned num;
-                int count = sscanf(valAddr, "%u", &num);
-                ReportInvalidParse(line, lineIdx, count, 1);
-                ParsedPrimes[i] = num;
-            }
-            DebugPrint("BB Primes ");
-            for (unsigned i = 0; i < PARSED_PRIMES_SZ; ++i) DebugPrint("%u ", ParsedPrimes[i]);
-            DebugPrint("\n");
-            return;
-        } */
-    if (strcmp(name, "MaxStationsCount") == 0) {
-        unsigned num;
-        int count = sscanf(valAddr, "%u", &num);
-        ReportInvalidParse(line, lineIdx, count, 1);
-        ParsedMaxStationsCount = num;
-        DebugPrint("BB MaxStationsCount %u\n", ParsedMaxStationsCount);
-        return;
-    }
-    if (strcmp(name, "MaxSid") == 0) {
-        unsigned num;
-        int count = sscanf(valAddr, "%u", &num);
-        ReportInvalidParse(line, lineIdx, count, 1);
-        ParsedMaxSid = num;
-        DebugPrint("BB MaxSid %u\n", ParsedMaxSid);
-        return;
-    }
-    printf("On line %u: %s\n", lineIdx, line);
-    printf("Invalid Parsed Argument (Primes, MaxStationsCount, MaxSid)\n");
     exit(EXIT_FAILURE);
 }
 
@@ -105,12 +71,12 @@ int main(int argc, char* argv[]) {
     }
     FILE* inputFile = fopen(argv[1], "r");
     if (inputFile == NULL) {
-        printf("fopen error (Invalid path?)\n");
+        printf("fopen error (Invalid path ?)\n");
         exit(EXIT_FAILURE);
     }
 #define LINE_SZ 4096
     char line[LINE_SZ] = { 0 };
-    for (unsigned lineIdx = 1; fgets(line, LINE_SZ, inputFile) != NULL; ++lineIdx) {    // Read next line from input file
+    for (int lineIdx = 1; fgets(line, LINE_SZ, inputFile) != NULL; ++lineIdx) {    // Read next line from input file
         line[strcspn(line, "\r\n")] = '\0';
         TrimLine(line);
         if (IsEmptyLine(line)) {
@@ -120,65 +86,75 @@ int main(int argc, char* argv[]) {
             continue;    // Skip comment lines
         }
         if (line[0] == 'A') {
-            EventAnnounceElections();
+            const char* args = &(line[1]);
+            int maxStationsCount, maxSid;
+            int count = sscanf(args, "%d %d", &maxStationsCount, &maxSid);
+            ReportInvalidParse(line, lineIdx, count, 2);
+            ReportOutOfBounds(line, lineIdx, maxStationsCount, 0, INT_MAX);
+            ReportOutOfBounds(line, lineIdx, maxSid, 0, INT_MAX);
+            EventAnnounceElections(maxStationsCount, maxSid);
             continue;
         }
         if (line[0] == 'D') {
             const char* args = &(line[1]);
-            unsigned did, seats;
-            int count = sscanf(args, "%u %u", &did, &seats);
+            int did, seats;
+            int count = sscanf(args, "%d %d", &did, &seats);
             ReportInvalidParse(line, lineIdx, count, 2);
             ReportOutOfBounds(line, lineIdx, did, 0, DISTRICTS_SZ);
+            ReportOutOfBounds(line, lineIdx, seats, 0, INT_MAX);
             EventCreateDistrict(did, seats);
             continue;
         }
         if (line[0] == 'S') {
             const char* args = &(line[1]);
-            unsigned sid, did;
-            int count = sscanf(args, "%u %u", &sid, &did);
+            int sid, did;
+            int count = sscanf(args, "%d %d", &sid, &did);
             ReportInvalidParse(line, lineIdx, count, 2);
+            ReportOutOfBounds(line, lineIdx, sid, 0, INT_MAX);
             ReportOutOfBounds(line, lineIdx, did, 0, DISTRICTS_SZ);
             EventCreateStation(sid, did);
             continue;
         }
+        if (line[0] == 'R') {
+            const char* args = &(line[1]);
+            int vid, sid;
+            int count = sscanf(args, "%d %d", &vid, &sid);
+            ReportInvalidParse(line, lineIdx, count, 2);
+            ReportOutOfBounds(line, lineIdx, vid, 0, INT_MAX);
+            ReportOutOfBounds(line, lineIdx, sid, 0, INT_MAX);
+            EventRegisterVoter(vid, sid);
+            continue;
+        }
         if (line[0] == 'C') {
             const char* args = &(line[1]);
-            unsigned cid, pid, did;
-            int count = sscanf(args, "%u %u %u", &cid, &pid, &did);
+            int cid, pid, did;
+            int count = sscanf(args, "%d %d %d", &cid, &pid, &did);
             ReportInvalidParse(line, lineIdx, count, 3);
+            ReportOutOfBounds(line, lineIdx, cid, 0, INT_MAX);
             ReportOutOfBounds(line, lineIdx, pid, 0, PARTIES_SZ);
             ReportOutOfBounds(line, lineIdx, did, 0, DISTRICTS_SZ);
             EventRegisterCandidate(cid, pid, did);
             continue;
         }
-        if (line[0] == 'R') {
-            const char* args = &(line[1]);
-            unsigned vid, sid;
-            int count = sscanf(args, "%u %u", &vid, &sid);
-            ReportInvalidParse(line, lineIdx, count, 2);
-            EventRegisterVoter(vid, sid);
-            continue;
-        }
         if (line[0] == 'V') {
             const char* args = &(line[1]);
-            unsigned vid, sid, cid, pid;
-            int count = sscanf(args, "%u %u %u %u", &vid, &sid, &cid, &pid);
+            int vid, sid, cid, pid;
+            int count = sscanf(args, "%d %d %d %d", &vid, &sid, &cid, &pid);
             ReportInvalidParse(line, lineIdx, count, 4);
+            ReportOutOfBounds(line, lineIdx, vid, 0, INT_MAX);
+            ReportOutOfBounds(line, lineIdx, sid, 0, INT_MAX);
+            ReportOutOfBounds(line, lineIdx, cid, -2, INT_MAX);
             ReportOutOfBounds(line, lineIdx, pid, 0, PARTIES_SZ);
             EventVote(vid, sid, cid, pid);
             continue;
         }
         if (line[0] == 'M') {
             const char* args = &(line[1]);
-            unsigned did;
-            int count = sscanf(args, "%u", &did);
+            int did;
+            int count = sscanf(args, "%d", &did);
             ReportInvalidParse(line, lineIdx, count, 1);
             ReportOutOfBounds(line, lineIdx, did, 0, DISTRICTS_SZ);
             EventCountVotes(did);
-            continue;
-        }
-        if (line[0] == 'G') {
-            EventFormGovernment();
             continue;
         }
         if (line[0] == 'N') {
@@ -187,8 +163,8 @@ int main(int argc, char* argv[]) {
         }
         if (line[0] == 'I') {
             const char* args = &(line[1]);
-            unsigned did;
-            int count = sscanf(args, "%u", &did);
+            int did;
+            int count = sscanf(args, "%d", &did);
             ReportInvalidParse(line, lineIdx, count, 1);
             ReportOutOfBounds(line, lineIdx, did, 0, DISTRICTS_SZ);
             EventPrintDistrict(did);
@@ -196,16 +172,17 @@ int main(int argc, char* argv[]) {
         }
         if (line[0] == 'J') {
             const char* args = &(line[1]);
-            unsigned sid;
-            int count = sscanf(args, "%u", &sid);
+            int sid;
+            int count = sscanf(args, "%d", &sid);
             ReportInvalidParse(line, lineIdx, count, 1);
+            ReportOutOfBounds(line, lineIdx, sid, 0, INT_MAX);
             EventPrintStation(sid);
             continue;
         }
         if (line[0] == 'K') {
             const char* args = &(line[1]);
-            unsigned pid;
-            int count = sscanf(args, "%u", &pid);
+            int pid;
+            int count = sscanf(args, "%d", &pid);
             ReportInvalidParse(line, lineIdx, count, 1);
             ReportOutOfBounds(line, lineIdx, pid, 0, PARTIES_SZ);
             EventPrintParty(pid);
@@ -215,41 +192,21 @@ int main(int argc, char* argv[]) {
             EventPrintParliament();
             continue;
         }
-        if (line[0] == 'B' && line[1] == 'A') {
-            EventBonusAnnounceElections();
-            continue;
-        }
         if (line[0] == 'B' && line[1] == 'U') {
             const char* args = &(line[2]);
-            unsigned vid, sid;
-            int count = sscanf(args, "%u %u", &vid, &sid);
+            int vid, sid;
+            int count = sscanf(args, "%d %d", &vid, &sid);
             ReportInvalidParse(line, lineIdx, count, 2);
+            ReportOutOfBounds(line, lineIdx, vid, 0, INT_MAX);
+            ReportOutOfBounds(line, lineIdx, sid, 0, INT_MAX);
             EventBonusUnregisterVoter(vid, sid);
-            continue;
-        }
-        if (line[0] == 'B' && line[1] == 'C') {
-            const char* args = &(line[2]);
-            unsigned cid, pid, did;
-            int count = sscanf(args, "%u %u %u", &cid, &pid, &did);
-            ReportInvalidParse(line, lineIdx, count, 3);
-            ReportOutOfBounds(line, lineIdx, pid, 0, PARTIES_SZ);
-            ReportOutOfBounds(line, lineIdx, did, 0, DISTRICTS_SZ);
-            EventBonusRegisterCandidate(cid, pid, did);
-            continue;
-        }
-        if (line[0] == 'B' && line[1] == 'W') {
-            EventBonusSplitCandidates();
             continue;
         }
         if (line[0] == 'B' && line[1] == 'F') {
             EventBonusFreeMemory();
             continue;
         }
-        if (line[0] == 'B' && line[1] == 'B') {
-            EventParsedArgumentInitialization(line, lineIdx);
-            continue;
-        }
-        printf("Invalid line %u: %s\n", lineIdx, line);
+        printf("Invalid line %d: %s\n", lineIdx, line);
         exit(EXIT_FAILURE);
     }
     int err = fclose(inputFile);
