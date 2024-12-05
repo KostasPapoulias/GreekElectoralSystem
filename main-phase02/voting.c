@@ -20,6 +20,7 @@ typedef struct Voter Voter;
 typedef struct Party Party;
 typedef struct Candidate Candidate;
 typedef struct ElectedCandidate ElectedCandidate;
+typedef struct MinHeap MinHeap;
 
 struct District {
     int did;
@@ -66,6 +67,13 @@ struct ElectedCandidate {
     ElectedCandidate* next;
 };
 
+struct MinHeap{
+    Candidate** data;
+    int size;
+    int capacity;
+};
+
+MinHeap *Heap;
 District Districts[DISTRICTS_SZ];
 Station** StationsHT;
 Party Parties[PARTIES_SZ];
@@ -170,8 +178,80 @@ Candidate* VoteForCandidate(Candidate* root, int cid) {
     }
     return VoteForCandidate(root->rc, cid);
 }
-void electCandidatePerParty(ElectedCandidate* candidates, int seats) {
-    
+void ElectPartyCandidatesInDistrict(int pid, int did, int partyElected) {
+    Heap = createMinHeap(partyElected);
+    traverseAndInsert(Heap, Parties[pid].candidates, did);
+
+    for (int i = 0; i < Heap->size; i++) {
+        Heap->data[i]->isElected = true;
+    }
+}
+void traverseAndInsert(MinHeap* heap, Candidate* root, int did) {
+    if (root == NULL) {
+        return;
+    }
+    traverseAndInsert(heap, root->lc, did);
+    if (root->did == did) {
+        insertHeap(heap, root);
+    }
+    traverseAndInsert(heap, root->rc, did);
+}
+void heapifyDown(MinHeap* heap, int index) {
+    while (true) {
+        int smallest = index;
+        int left = 2 * index + 1;
+        int right = 2 * index + 2;
+
+        if (left < heap->size && heap->data[left]->votes < heap->data[smallest]->votes) {
+            smallest = left;
+        }
+        if (right < heap->size && heap->data[right]->votes < heap->data[smallest]->votes) {
+            smallest = right;
+        }
+        if (smallest != index) {
+            swap(&heap->data[index], &heap->data[smallest]);
+            index = smallest;
+        } else {
+            break;
+        }
+    }
+}
+void heapifyUp(MinHeap* heap, int index) {
+    while (index > 0) {
+        int parent = (index - 1) / 2;
+        if (heap->data[index]->votes < heap->data[parent]->votes) {
+            swap(&heap->data[index], &heap->data[parent]);
+            index = parent;
+        } else {
+            break;
+        }
+    }
+}
+/*insert candidate in the heap*/
+void insertHeap(MinHeap* heap, Candidate* candidate) {
+    if (heap->size < heap->capacity) {
+        heap->data[heap->size] = candidate;
+        heapifyUp(heap, heap->size);
+        heap->size++;
+    } else if (candidate->votes > heap->data[0]->votes) {
+        heap->data[0] = candidate;
+        heapifyDown(heap, 0);
+    }
+}
+
+/*create and initialize the heap*/
+MinHeap* createMinHeap(int capacity) {
+    MinHeap* heap = (MinHeap*)malloc(sizeof(MinHeap));
+    heap->data = (Candidate**)malloc(sizeof(Candidate*) * capacity);
+    heap->size = 0;
+    heap->capacity = capacity;
+    return heap;
+}
+/*swap two candidates*/
+void swap(Candidate** a, Candidate** b) {
+    Candidate* temp = *a;
+    *a = *b;
+    *b = temp;
 }
 void EventAnnounceElections(int maxStationsCount, int maxSid){
     DebugPrint("A\n");
@@ -348,14 +428,24 @@ void EventCountVotes(int did) {
         total_votes_did += current_district.partyVotes[i];
     }
     int eklogiko_metro = total_votes_did / current_district.seats;
-    int seat_per_party;
+    int seat_per_party[5];
     for(i = 0; i < 5; i++){
-        seat_per_party = current_district.partyVotes[i] / eklogiko_metro;
-        current_district.seats-= seat_per_party;
-        Parties[i].electedCount+= seat_per_party;
-        electCandidatePerParty(&Parties[i].candidates, seat_per_party);
+        if(eklogiko_metro == 0){
+            seat_per_party[i] = 0;
+            continue;
+        }
+        seat_per_party[i] = current_district.partyVotes[i] / eklogiko_metro;
+        current_district.seats-= seat_per_party[i];
+        Parties[i].electedCount+= seat_per_party[i];
+        ElectPartyCandidatesInDistrict(i, did, seat_per_party[i]);
     }
-    
+    MinHeap *tempHeap = Heap;
+    printf("\n\tSeats");
+    for (int i = 0; i < tempHeap->size; i++) {
+        printf("\n\t\t<%d>, <%d>, <%d>\n",
+               tempHeap->data[i]->cid, tempHeap->data[i]->pid, tempHeap->data[i]->votes);
+    }
+    DebugPrint("Done\n");
 }
 void EventFormGovernment() {
     DebugPrint("G\n");
