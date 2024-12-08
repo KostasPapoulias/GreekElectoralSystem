@@ -67,13 +67,6 @@ struct ElectedCandidate {
     ElectedCandidate* next;
 };
 
-struct MinHeap{
-    Candidate** data;
-    int size;
-    int capacity;
-};
-
-MinHeap *Heap;
 District Districts[DISTRICTS_SZ];
 Station** StationsHT;
 Party Parties[PARTIES_SZ];
@@ -178,81 +171,64 @@ Candidate* VoteForCandidate(Candidate* root, int cid) {
     }
     return VoteForCandidate(root->rc, cid);
 }
-void ElectPartyCandidatesInDistrict(int pid, int did, int partyElected) {
-    Heap = createMinHeap(partyElected);
-    traverseAndInsert(Heap, Parties[pid].candidates, did);
-
-    for (int i = 0; i < Heap->size; i++) {
-        Heap->data[i]->isElected = true;
+void initializeElectedArray(Candidate* root, Candidate** elected, int* count, int partyElected, int did) {
+    if (root == NULL || *count >= partyElected) {
+        return;
     }
+    initializeElectedArray(root->lc, elected, count, partyElected, did);
+    if (root->did == did && *count < partyElected) {
+        elected[*count] = root;
+        (*count)++;
+    }
+    initializeElectedArray(root->rc, elected, count, partyElected, did);
 }
-void traverseAndInsert(MinHeap* heap, Candidate* root, int did) {
+
+void updateElectedArray(Candidate* root, Candidate** elected, int partyElected, int did) {
     if (root == NULL) {
         return;
     }
-    traverseAndInsert(heap, root->lc, did);
+    updateElectedArray(root->lc, elected, partyElected, did);
     if (root->did == did) {
-        insertHeap(heap, root);
+        int minIndex = 0;
+        for (int i = 1; i < partyElected; i++) {
+            if (elected[i]->votes < elected[minIndex]->votes) {
+                minIndex = i;
+            }
+        }
+        if (root->votes > elected[minIndex]->votes) {
+            elected[minIndex] = root;
+        }
     }
-    traverseAndInsert(heap, root->rc, did);
+    updateElectedArray(root->rc, elected, partyElected, did);
 }
-void heapifyDown(MinHeap* heap, int index) {
-    while (true) {
-        int smallest = index;
-        int left = 2 * index + 1;
-        int right = 2 * index + 2;
 
-        if (left < heap->size && heap->data[left]->votes < heap->data[smallest]->votes) {
-            smallest = left;
-        }
-        if (right < heap->size && heap->data[right]->votes < heap->data[smallest]->votes) {
-            smallest = right;
-        }
-        if (smallest != index) {
-            swap(&heap->data[index], &heap->data[smallest]);
-            index = smallest;
-        } else {
-            break;
-        }
-    }
-}
-void heapifyUp(MinHeap* heap, int index) {
-    while (index > 0) {
-        int parent = (index - 1) / 2;
-        if (heap->data[index]->votes < heap->data[parent]->votes) {
-            swap(&heap->data[index], &heap->data[parent]);
-            index = parent;
-        } else {
-            break;
+void ElectPartyCandidatesInDistrict(int pid, int did, int partyElected) {
+    Candidate* elected[partyElected];
+    int count = 0;
+    /*initialize and find the most voted candidates, saved in the elected array*/
+    initializeElected(Parties[pid].candidates, elected, &count, partyElected, did);
+    updateElected(Parties[pid].candidates, elected, partyElected, did);
+    /*sort the elected array in ascending order by votes and mark the isElected field as true*/
+    for (int i = 0; i < partyElected - 1; i++) {
+        for (int j = 0; j < partyElected - i - 1; j++) {
+            if (elected[j]->votes < elected[j + 1]->votes) {
+                Candidate* temp = elected[j];
+                elected[j] = elected[j + 1];
+                elected[j + 1] = temp;
+            }
+            elected[j]->isElected = true;
+            elected[j + 1]->isElected = true;
         }
     }
-}
-/*insert candidate in the heap*/
-void insertHeap(MinHeap* heap, Candidate* candidate) {
-    if (heap->size < heap->capacity) {
-        heap->data[heap->size] = candidate;
-        heapifyUp(heap, heap->size);
-        heap->size++;
-    } else if (candidate->votes > heap->data[0]->votes) {
-        heap->data[0] = candidate;
-        heapifyDown(heap, 0);
+    printf("\n\tseats");
+    for (int i = 0; i < partyElected; i++) {
+        if (elected[i] != NULL) {
+            printf("<%d> <%d> <%d>\n", elected[i]->cid, elected[i]->pid, elected[i]->votes);
+        }
     }
 }
 
-/*create and initialize the heap*/
-MinHeap* createMinHeap(int capacity) {
-    MinHeap* heap = (MinHeap*)malloc(sizeof(MinHeap));
-    heap->data = (Candidate**)malloc(sizeof(Candidate*) * capacity);
-    heap->size = 0;
-    heap->capacity = capacity;
-    return heap;
-}
-/*swap two candidates*/
-void swap(Candidate** a, Candidate** b) {
-    Candidate* temp = *a;
-    *a = *b;
-    *b = temp;
-}
+
 void EventAnnounceElections(int maxStationsCount, int maxSid){
     DebugPrint("A\n");
     /* Initialize districts*/
@@ -438,12 +414,6 @@ void EventCountVotes(int did) {
         current_district.seats-= seat_per_party[i];
         Parties[i].electedCount+= seat_per_party[i];
         ElectPartyCandidatesInDistrict(i, did, seat_per_party[i]);
-    }
-    MinHeap *tempHeap = Heap;
-    printf("\n\tSeats");
-    for (int i = 0; i < tempHeap->size; i++) {
-        printf("\n\t\t<%d>, <%d>, <%d>\n",
-               tempHeap->data[i]->cid, tempHeap->data[i]->pid, tempHeap->data[i]->votes);
     }
     DebugPrint("Done\n");
 }
