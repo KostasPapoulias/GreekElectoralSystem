@@ -1,5 +1,5 @@
 #include "voting.h"
-
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -11,61 +11,7 @@
 #endif
 
 #define PRIMES_SZ 1024
-#define DISTRICTS_SZ 56
-#define PARTIES_SZ 5
 
-typedef struct District District;
-typedef struct Station Station;
-typedef struct Voter Voter;
-typedef struct Party Party;
-typedef struct Candidate Candidate;
-typedef struct ElectedCandidate ElectedCandidate;
-typedef struct MinHeap MinHeap;
-
-struct District {
-    int did;
-    int seats;
-    int blanks;
-    int invalids;
-    int partyVotes[PARTIES_SZ];
-};
-
-struct Station {
-    int sid;
-    int did;
-    int registered;
-    Voter* voters;
-    Station* next;
-};
-struct Voter {
-    int vid;
-    bool voted;
-    Voter* parent;
-    Voter* lc;
-    Voter* rc;
-};
-
-struct Party {
-    int pid;
-    int electedCount;
-    Candidate* candidates;
-};
-struct Candidate {
-    int cid;
-    int did;
-    int pid;
-    int votes;
-    bool isElected;
-    Candidate* lc;
-    Candidate* rc;
-};
-
-struct ElectedCandidate {
-    int cid;
-    int did;
-    int pid;
-    ElectedCandidate* next;
-};
 
 District Districts[DISTRICTS_SZ];
 Station** StationsHT;
@@ -83,12 +29,21 @@ int MaxStationsCount;
 int MaxSid;
 int hashTableSize;
 
-int isPrime(int num) {
-    if (num <= 1) return 0;
-    if (num <= 3) return 1;
-    if (num % 2 == 0 || num % 3 == 0) return 0;
-    for (int i = 5; i * i <= num; i += 6) {
-        if (num % i == 0 || num % (i + 2) == 0) return 0;
+int findFirstFreeLocation(District* districts, int size) {
+    for (int i = 0; i < size; i++) {
+        if (districts[i].did == DefaultDid) {
+            return i;
+        }
+    }
+    return -1; 
+}
+int hashFunction(int sid) {
+    return (sid * Primes[PRIMES_SZ - 1]) % hashTableSize;
+}
+int isPrime(int n) {
+    if (n <= 1) return 0;
+    for (int i = 2; i * i <= n; i++) {
+        if (n % i == 0) return 0;
     }
     return 1;
 }
@@ -124,14 +79,19 @@ Voter* insertVoter(Voter* root, Voter* newVoter) {
 
     if (root->lc == NULL) {
         root->lc = newVoter;
+        newVoter->parent = root;
     } else if (root->rc == NULL) {
         root->rc = newVoter;
+        newVoter->parent = root;
     } else {
         Voter* inserted = insertVoter(root->lc, newVoter);
         if (inserted == newVoter) {
             return root;
         }
         root->rc = insertVoter(root->rc, newVoter);
+        if (root->rc == newVoter) {
+            newVoter->parent = root;
+        }
     }
 
     return root;
@@ -157,40 +117,38 @@ Voter* findVoter(Voter* root, int vid) {
     }
     return findVoter(root->rc, vid);
 }
-Candidate* VoteForCandidate(Candidate* root, int cid) {
+void VoteForCandidate(Candidate* root, int cid) {
     if (root == NULL) {
-        return NULL;
+        return;
     }
     if (root->cid == cid) {
         root->votes++;
-        return root;
+        return;
     }
-    Candidate* left = VoteForCandidate(root->lc, cid);
-    if (left != NULL) {
-        return left;
-    }
-    return VoteForCandidate(root->rc, cid);
+    VoteForCandidate(root->lc, cid);
+    VoteForCandidate(root->rc, cid);
 }
-void initializeElectedArray(Candidate* root, Candidate** elected, int* count, int partyElected, int did) {
+void initializeElected(Candidate* root, Candidate** elected, int* count, int partyElected, int did) {
     if (root == NULL || *count >= partyElected) {
         return;
     }
-    initializeElectedArray(root->lc, elected, count, partyElected, did);
+    
+    initializeElected(root->lc, elected, count, partyElected, did);
     if (root->did == did && *count < partyElected) {
         elected[*count] = root;
         (*count)++;
     }
-    initializeElectedArray(root->rc, elected, count, partyElected, did);
+    initializeElected(root->rc, elected, count, partyElected, did);
 }
-
-void updateElectedArray(Candidate* root, Candidate** elected, int partyElected, int did) {
+void updateElected(Candidate* root, Candidate** elected, int partyElected, int did) {
     if (root == NULL) {
         return;
     }
-    updateElectedArray(root->lc, elected, partyElected, did);
+    updateElected(root->lc, elected, partyElected, did);
     if (root->did == did) {
         int minIndex = 0;
-        for (int i = 1; i < partyElected; i++) {
+        int i;
+        for (i = 1; i < partyElected; i++) {
             if (elected[i]->votes < elected[minIndex]->votes) {
                 minIndex = i;
             }
@@ -199,14 +157,14 @@ void updateElectedArray(Candidate* root, Candidate** elected, int partyElected, 
             elected[minIndex] = root;
         }
     }
-    updateElectedArray(root->rc, elected, partyElected, did);
+    updateElected(root->rc, elected, partyElected, did);
 }
-
 void ElectPartyCandidatesInDistrict(int pid, int did, int partyElected) {
     Candidate* elected[partyElected];
     int count = 0;
     /*initialize and find the most voted candidates, saved in the elected array*/
     initializeElected(Parties[pid].candidates, elected, &count, partyElected, did);
+    // printf("\n\telected: %d", count);
     updateElected(Parties[pid].candidates, elected, partyElected, did);
     /*sort the elected array in ascending order by votes and mark the isElected field as true*/
     for (int i = 0; i < partyElected - 1; i++) {
@@ -216,21 +174,32 @@ void ElectPartyCandidatesInDistrict(int pid, int did, int partyElected) {
                 elected[j] = elected[j + 1];
                 elected[j + 1] = temp;
             }
-            elected[j]->isElected = true;
-            elected[j + 1]->isElected = true;
         }
     }
-    printf("\n\tseats");
+    for (int i = 0; i < partyElected; i++) {
+        elected[i]->isElected = true;
+    }
     for (int i = 0; i < partyElected; i++) {
         if (elected[i] != NULL) {
             printf("<%d> <%d> <%d>\n", elected[i]->cid, elected[i]->pid, elected[i]->votes);
         }
     }
 }
-
-
+int findCandidateDistrict(Candidate* root, int cid){
+    if (root == NULL) {
+        return -1;
+    }
+    if (root->cid == cid) {
+        return root->did;
+    }
+    int leftDid = findCandidateDistrict(root->lc, cid);
+    if (leftDid != -1) {
+        return leftDid;
+    }
+    return findCandidateDistrict(root->rc, cid);
+}
 void EventAnnounceElections(int maxStationsCount, int maxSid){
-    DebugPrint("A\n");
+    printf("A\n");
     /* Initialize districts*/
     int i;
     for (i = 0; i < DISTRICTS_SZ; i++) {
@@ -244,6 +213,8 @@ void EventAnnounceElections(int maxStationsCount, int maxSid){
     }
 
     /*first prime number larger than station size*/
+    MaxStationsCount = maxStationsCount;
+    MaxSid = maxSid;
     hashTableSize = nextPrime(MaxStationsCount); 
 
     /* Initialize stations hash table*/
@@ -261,27 +232,33 @@ void EventAnnounceElections(int maxStationsCount, int maxSid){
     /* Initialize parliament*/
     Parliament = NULL;
 
-    MaxStationsCount = maxStationsCount;
-    MaxSid = maxSid;
-    DebugPrint("Done\n");
+    
+    printf("\nDone\n");
 
 }
 void EventCreateDistrict(int did, int seats) {
-    DebugPrint("D %d %d\n", did, seats);
+    printf("D %d %d\n", did, seats);
     if (did < 0 || did >= DISTRICTS_SZ) {
         return;
     }
-    Districts[did].did = did;
-    Districts[did].seats = seats;
-    int i;
-    printf("\tDistricts: \n\t\t");
-    for (i = 0; i < did; i++) {
-        printf("<%d>, ", Districts[i].did);
+    int freeSpot = findFirstFreeLocation(Districts, DISTRICTS_SZ);
+    if(freeSpot == -1){
+        printf("\nDistricts array is full\n");
+        return;
     }
-    DebugPrint("\nDone\n");
+    Districts[freeSpot].did = did;
+    Districts[freeSpot].seats = seats;
+    int i = 0;
+    printf("\n\tDistricts: \n\t");
+    while(Districts[i].did != DefaultDid && i < 56){
+        printf("<%d>, ", Districts[i].did);
+        i++;
+    }
+    
+    printf("\nDone\n");
 }
 void EventCreateStation(int sid, int did) {
-    DebugPrint("S %d %d\n", sid, did);
+    printf("S %d %d\n", sid, did);
     if (did < 0 || did >= DISTRICTS_SZ) {
         return;
     }
@@ -294,7 +271,9 @@ void EventCreateStation(int sid, int did) {
     newStation->registered = 0;
     newStation->voters = NULL;
     newStation->next = NULL;
-    int hash = sid % hashTableSize;
+    int hash = hashFunction(sid);
+    printf("\n[%d]\n\t\t", hashTableSize);
+    printf("hash: %d", hash);
     if (StationsHT[hash] == NULL) {
         StationsHT[hash] = newStation;
     } else {
@@ -304,17 +283,17 @@ void EventCreateStation(int sid, int did) {
         }
         current->next = newStation;
     }
-    printf("\tStations[%d]\n\t\t", hash);
+    printf("\n\tStations[%d]\n\t\t", hash);
     Station* current = StationsHT[hash];
     while (current != NULL) {
         printf("<%d>, ", current->sid);
         current = current->next;
     }
-    DebugPrint("Done\n");
+    printf("\nDone\n");
 
 }
 void EventRegisterCandidate(int cid, int pid, int did) {
-    DebugPrint("C %d %d %d\n", cid, pid, did);
+    printf("C %d %d %d\n", cid, pid, did);
     if (pid < 0 || pid >= PARTIES_SZ) {
         return;
     }
@@ -328,17 +307,17 @@ void EventRegisterCandidate(int cid, int pid, int did) {
     newCandidate->votes = 0;
     newCandidate->lc = NULL;
     newCandidate->rc = NULL;
-    Parties[pid].candidates = InsertCandidate(Parties[pid].candidates, newCandidate);
-    printf("\tCandidates[%d]:\n", pid);
+    Parties[pid].candidates = insertCandidate(Parties[pid].candidates, newCandidate);
+    printf("\n\tCandidates[%d]:\n", pid);
     printCandidates(Parties[pid].candidates);
-    DebugPrint("Done\n");
+    printf("\nDone\n");
 }
 void EventRegisterVoter(int vid, int sid) {
-    DebugPrint("R %d %d\n", vid, sid);
+    printf("R %d %d\n", vid, sid);
     if (sid < 0 || sid >= MaxSid) {
         return;
     }
-    int hash = sid % hashTableSize;
+    int hash = hashFunction(sid);
     Station* current = StationsHT[hash];
     while (current != NULL) {
         if (current->sid == sid) {
@@ -347,23 +326,23 @@ void EventRegisterVoter(int vid, int sid) {
             newVoter->voted = false;
             newVoter->lc = NULL;
             newVoter->rc = NULL;
-            current->voters = InsertVoter(current->voters, newVoter);
+            current->voters = insertVoter(current->voters, newVoter);
             current->registered++;
             break;
         }
         current = current->next;
     }
-    printf("\tVoters[%d]:\n\t\t", sid);
+    printf("\n\tVoters[%d]:\n\t\t", sid);
     Voter* currentVoter = current->voters;
     printVoters(currentVoter);
-    DebugPrint("Done\n");    
+    printf("\nDone\n");    
 }
 void EventVote(int vid, int sid, int cid, int pid) {
-    DebugPrint("V %d %d %d %d\n", vid, sid, cid, pid);
+    printf("V %d %d %d %d\n", vid, sid, cid, pid);
     if (sid < 0 || sid >= MaxSid) {
         return;
     }
-    int hash = sid % hashTableSize;
+    int hash = hashFunction(sid);
     int voterDID;
     Station* current = StationsHT[hash];
     while (current != NULL) {
@@ -375,25 +354,26 @@ void EventVote(int vid, int sid, int cid, int pid) {
         }
         current = current->next;
     }
+    int candidateDid = findCandidateDistrict(Parties[pid].candidates, cid);
     if(cid != BlankDid && cid != InvalidDid) {
-        Parties[pid].candidates = VoteForCandidate(Parties[pid].candidates, cid);
-        Districts[voterDID].partyVotes[pid]++;
+        VoteForCandidate(Parties[pid].candidates, cid);
+        Districts[candidateDid].partyVotes[pid]++;
     }
     else{
         cid == BlankDid ? Districts[voterDID].blanks++ : Districts[voterDID].invalids++;
     }
-    printf("\tDistricts[%d]:\n", voterDID);
+    printf("\tDistricts[%d]:\n", candidateDid==-1?voterDID:candidateDid);
     printf("\t\tBlanks:\n\t\t\t %d\n", Districts[voterDID].blanks);
     printf("\t\tInvalids:\n\t\t\t %d\n", Districts[voterDID].invalids);
     printf("\t\tParty Votes[%d]:\n", pid);
     int i;
     for (i = 0; i < PARTIES_SZ; i++) {
-        printf("\t\t\t<%d> <%d>\n", i, Districts[voterDID].partyVotes[i]);
+        printf("\t\t\t<%d> <%d>\n", i, Districts[candidateDid==-1?voterDID:candidateDid].partyVotes[i]);
     }
-    DebugPrint("Done\n");
+    printf("\nDone\n");
 }
 void EventCountVotes(int did) {
-    DebugPrint("M %d\n", did);
+    printf("M %d\n", did);
     if(did < 0 || did > 56){
         return;
     }
@@ -403,8 +383,16 @@ void EventCountVotes(int did) {
     for(i = 0; i < 5; i++){
         total_votes_did += current_district.partyVotes[i];
     }
+    if(current_district.seats == 0){
+        printf("\n\tseats\n");
+        printf("\t\t0\n");
+        printf("\nDone\n");
+        return;
+    }
     int eklogiko_metro = total_votes_did / current_district.seats;
     int seat_per_party[5];
+    printf("\n\tseats\n");
+
     for(i = 0; i < 5; i++){
         if(eklogiko_metro == 0){
             seat_per_party[i] = 0;
@@ -415,49 +403,167 @@ void EventCountVotes(int did) {
         Parties[i].electedCount+= seat_per_party[i];
         ElectPartyCandidatesInDistrict(i, did, seat_per_party[i]);
     }
-    DebugPrint("Done\n");
+    printf("\nDone\n");
 }
 void EventFormGovernment() {
-    DebugPrint("G\n");
-    // TODO
+    printf("G\n");
 }
 void EventFormParliament() {
-    DebugPrint("N\n");
-    // TODO
+    printf("N\n");
+    int topParty = 0;
+    int topVotes = 0;
+    int i;
+    for(i = 0; i < 5; i++){
+        if(Parties[i].electedCount > topVotes){
+            topVotes = Parties[i].electedCount;
+            topParty = i;
+        }
+    }
+    addElectedCandidatesToParliament(Parties[topParty].candidates);
+    ElectedCandidate* current = Parliament;
+
+    while(current != NULL){
+        printf("\t\t<%d> <%d> <%d>\n", current->cid, current->pid, current->did);
+        current = current->next;
+    }    
 }
+void addElectedCandidatesToParliament(Candidate* root) {
+    if (root == NULL) {
+        return;
+    }
+    addElectedCandidatesToParliament(root->lc);
+    if (root->isElected) {
+        ElectedCandidate* newElected = (ElectedCandidate*)malloc(sizeof(ElectedCandidate));
+        newElected->cid = root->cid;
+        newElected->did = root->did;
+        newElected->pid = root->pid;
+        newElected->next = Parliament;
+        Parliament = newElected;
+    }
+    addElectedCandidatesToParliament(root->rc);
+}
+
 void EventPrintDistrict(int did) {
-    DebugPrint("I %d\n", did);
-    // TODO
+    printf("I %d\n", did);
+    int i;
+    for(i = 0; i < 56; i++){
+        if(Districts[i].did == did){
+            printf("\t\tSeats:\n\t\t\t %d\n", Districts[i].seats);
+            printf("\t\tBlanks:\n\t\t\t %d\n", Districts[i].blanks);
+            printf("\t\tInvalids:\n\t\t\t %d\n", Districts[i].invalids);
+            printf("\t\tParty Votes:\n");
+            int j;
+            for(j = 0; j < 5; j++){
+                printf("\t\t\t<%d> <%d>\n", j, Districts[i].partyVotes[j]);
+            }
+        }
+    }
+    printf("\nDone\n");
 }
 void EventPrintStation(int sid) {
-    DebugPrint("J %d\n", sid);
-    // TODO
+    printf("J %d\n", sid);
+    int hash = hashFunction(sid);
+    Station* current = StationsHT[hash];
+    while (current != NULL) {
+        if (current->sid == sid) {
+            printf("\t\tRegistered:\n\t\t\t %d\n", current->registered);
+            printf("\t\tVoters:\n\t\t\t");
+            Voter* currentVoter = current->voters;
+            printVoters(currentVoter);
+        }
+        current = current->next;
+    }
+    printf("\nDone\n");
 }
 void EventPrintParty(int pid) {
-    DebugPrint("K %d\n", pid);
-    // TODO
+    printf("K %d\n", pid);
+    printf("\t\telected");
+    Candidate* current = Parties[pid].candidates;
+    while (current != NULL) {
+        /*if (current->isElected)*/
+            printf("<%d> <%d>\n", current->cid, current->votes);
+        
+        current = current->lc;
+    }
+    printf("\nDone\n");
+
 }
 void EventPrintParliament() {
-    DebugPrint("L\n");
-    // TODO
+    printf("L\n");
+    printf("\n\tmembers:\n");
+    ElectedCandidate* current = Parliament;
+    while (current != NULL) {
+        printf("\t\t<%d> <%d> <%d>\n", current->cid, current->pid, current->did);
+        current = current->next;
+    }
 }
 void EventBonusAnnounceElections() {
-    DebugPrint("BA\n");
-    // TODO
+    printf("BA\n");
 }
+void unregisterVoter(Voter* root, int vid) {
+        if (root == NULL) {
+            return;
+        }
+        if (root->vid == vid) {
+            free(root);
+            return;
+        }
+        unregisterVoter(root->lc, vid);
+        unregisterVoter(root->rc, vid);
+    }
 void EventBonusUnregisterVoter(int vid, int sid) {
-    DebugPrint("BU %d %d\n", vid, sid);
-    // TODO
+    printf("BU %d %d\n", vid, sid);
+    int hash = hashFunction(sid);
+    Station* current = StationsHT[hash];
+    while (current != NULL) {
+        if (current->sid == sid) {
+            unregisterVoter(current->voters, vid);
+            current->registered--;
+            break;
+        }
+        current = current->next;
+    }
+    printf("\tVoters[%d]:\n\t\t", sid);
+    Voter* currentVoter = current->voters;
+    printVoters(currentVoter);
+    printf("\nDone\n");
+    
 }
 void EventBonusRegisterCandidate(int cid, int pid, int did) {
-    DebugPrint("BC %d %d %d\n", cid, pid, did);
-    // TODO
+    printf("BC %d %d %d\n", cid, pid, did);
 }
 void EventBonusSplitCandidates() {
-    DebugPrint("BW\n");
-    // TODO
+    printf("BW\n");
 }
 void EventBonusFreeMemory() {
-    DebugPrint("BF\n");
-    // TODO
+    printf("BF\n");
+    int i;
+    for (i = 0; i < hashTableSize; i++) {
+        Station* current = StationsHT[i];
+        while (current != NULL) {
+            Station* temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+    free(StationsHT);
+
+    for (i = 0; i < PARTIES_SZ; i++) {
+        Candidate* current = Parties[i].candidates;
+        while (current != NULL) {
+            Candidate* temp = current;
+            current = current->lc;
+            free(temp);
+        }
+    }
+
+    ElectedCandidate* currentElected = Parliament;
+    while (currentElected != NULL) {
+        ElectedCandidate* temp = currentElected;
+        currentElected = currentElected->next;
+        free(temp);
+    }
+    
+    printf("\nDone\n");
+    
 }
