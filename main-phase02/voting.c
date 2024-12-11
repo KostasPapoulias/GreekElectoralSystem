@@ -260,9 +260,11 @@ void EventCreateDistrict(int did, int seats) {
 void EventCreateStation(int sid, int did) {
     printf("S %d %d\n", sid, did);
     if (did < 0 || did >= DISTRICTS_SZ) {
+        printf("\n\tInvalid district\n");
         return;
     }
     if (sid < 0 || sid >= MaxStationsCount) {
+        printf("\n\tInvalid station\n");
         return;
     }
     Station* newStation = (Station*)malloc(sizeof(Station));
@@ -272,8 +274,6 @@ void EventCreateStation(int sid, int did) {
     newStation->voters = NULL;
     newStation->next = NULL;
     int hash = hashFunction(sid);
-    printf("\n[%d]\n\t\t", hashTableSize);
-    printf("hash: %d", hash);
     if (StationsHT[hash] == NULL) {
         StationsHT[hash] = newStation;
     } else {
@@ -295,9 +295,11 @@ void EventCreateStation(int sid, int did) {
 void EventRegisterCandidate(int cid, int pid, int did) {
     printf("C %d %d %d\n", cid, pid, did);
     if (pid < 0 || pid >= PARTIES_SZ) {
+        printf("\n\tInvalid party\n");
         return;
     }
     if (did < 0 || did >= DISTRICTS_SZ) {
+        printf("\n\tInvalid district\n");
         return;
     }
     Candidate* newCandidate = (Candidate*)malloc(sizeof(Candidate));
@@ -315,10 +317,12 @@ void EventRegisterCandidate(int cid, int pid, int did) {
 void EventRegisterVoter(int vid, int sid) {
     printf("R %d %d\n", vid, sid);
     if (sid < 0 || sid >= MaxSid) {
+        printf("\n\tInvalid station\n");
         return;
     }
     int hash = hashFunction(sid);
     Station* current = StationsHT[hash];
+    
     while (current != NULL) {
         if (current->sid == sid) {
             Voter* newVoter = (Voter*)malloc(sizeof(Voter));
@@ -375,6 +379,7 @@ void EventVote(int vid, int sid, int cid, int pid) {
 void EventCountVotes(int did) {
     printf("M %d\n", did);
     if(did < 0 || did > 56){
+        printf("\n\tInvalid district\n");
         return;
     }
     District current_district = Districts[did];
@@ -501,16 +506,17 @@ void EventBonusAnnounceElections() {
     printf("BA\n");
 }
 void unregisterVoter(Voter* root, int vid) {
-        if (root == NULL) {
-            return;
-        }
-        if (root->vid == vid) {
-            free(root);
-            return;
-        }
-        unregisterVoter(root->lc, vid);
-        unregisterVoter(root->rc, vid);
+    /*TODO*/
+    if (root == NULL) {
+        return;
     }
+    if (root->vid == vid) {
+        free(root);
+        return;
+    }
+    unregisterVoter(root->lc, vid);
+    unregisterVoter(root->rc, vid);
+}
 void EventBonusUnregisterVoter(int vid, int sid) {
     printf("BU %d %d\n", vid, sid);
     int hash = hashFunction(sid);
